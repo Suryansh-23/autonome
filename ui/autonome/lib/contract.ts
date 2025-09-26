@@ -1,4 +1,4 @@
-import type { Address } from "viem";
+import type { Address, Hex } from "viem";
 
 // Minimal ABI fragment for Registrar.requestRegistration(string)
 export const ABI = [
@@ -19,10 +19,8 @@ export const ABI = [
 ] as const;
 
 export const CONTRACTS: Record<number, { address: Address }> = {
-  // mainnet (replace with real address when ready)
-  1: { address: "0x0000000000000000000000000000000000000000" },
   // polygon
-  137: { address: "0x0000000000000000000000000000000000000000" },
+  137: { address: process.env.CONTRACT_ADDRESS_POLYGON as Hex },
   // sepolia testnet (default for testing)
-  11155111: { address: "0x0000000000000000000000000000000000000000" },
+  84532: { address: process.env.CONTRACT_ADDRESS_BASE_SEPOLIA as Hex},
 };

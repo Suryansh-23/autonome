@@ -3,7 +3,7 @@ import { ReactNode } from "react";
 import { getDefaultConfig, RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
 import { WagmiProvider } from "wagmi";
-import { mainnet, sepolia, polygon } from "wagmi/chains";
+import { mainnet, sepolia, polygon, baseSepolia } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || process.env.NEXT_PUBLIC_RAINBOWKIT_APP_ID;
@@ -11,7 +11,7 @@ const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || process.en
 const config = getDefaultConfig({
   appName: "x0x0",
   projectId: projectId ?? "demo",
-  chains: [mainnet, polygon, sepolia],
+  chains: [polygon, baseSepolia],
   ssr: true,
 });
 
