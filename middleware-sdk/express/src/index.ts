@@ -1,4 +1,7 @@
 export * from "./middleware/middlware";
+export { DynamicPricingCalculator } from "./price-calculator/price";
+export type { DynamicPriceCalculator } from "./x402-payment/payment";
+export type { DynamicPricingConfig } from "./config/config";
 export type {
   Money,
   Network,

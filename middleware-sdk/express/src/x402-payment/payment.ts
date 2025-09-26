@@ -93,7 +93,7 @@ export function paymentMiddleware(
       // price = dynamicPriceCalculator(origniall
       const originalPrice = price;
       price = dynamicPriceCalculator(originalPrice, req, network);
-      console.log(`[paymentMiddleware] Dynamic pricing: ${originalPrice} -> ${price}`);
+      console.log(`[paymentMiddleware] Dynamic pricing: ${originalPrice} (default price from the route config) -> ${price} (adjusted as per the RPS)`);
     }
     const {
       description,

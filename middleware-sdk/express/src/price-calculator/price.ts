@@ -1,4 +1,5 @@
-import { Price } from "x402/types";
+import { Price, Network } from "x402/types";
+import { Request } from "express";
 import { DynamicPricingConfig } from "../config/config";
 import { randomInt } from "crypto";
 
@@ -6,7 +7,7 @@ import { randomInt } from "crypto";
  * Helper class to track requests per second (RPS) 
 */
 export class RPSTracker {
-    private requestTimestamps: number[] = []; // or use mapping ?
+    public requestTimestamps: number[] = []; // or use mapping ?
     private windowSize: number
 
     constructor(windowMS: number = 60000) { 
@@ -46,12 +47,43 @@ export class DynamicPricingCalculator {
         this.rpsTracker = new RPSTracker(); 
     }
 
-    // @note for testing purposes and seeing how the middleware works, we are returning a random number between 0-10
-    // later will implement the actual dynamic pricing logic with rps 
-    calculatePrice(): number{
-        // const currentRPS = this.rpsTracker.record();
-        // const { basePrice, maxPrice, rpsThreshold, multiplier } = this.config;
-        console.log(`calculatePrice method from DynamicPricingCalculator class called, returning random number.`)
-        return randomInt(10);
+    calculatePrice = (originalPrice: Price, req: Request, network: Network): Price => {
+        // console.log(`calculatePrice method from DynamicPricingCalculator class called, returning random number.`)
+        // return randomInt(10);
+
+        const currentRPS = this.rpsTracker.record();
+        const { basePrice, maxPrice, rpsThreshold, multiplier } = this.config;
+        const baseNum = this.getNumberIntFromPrice(originalPrice, basePrice);
+        const maxNum = this.getNumberIntFromPrice(originalPrice, maxPrice);
+
+        if (currentRPS <= rpsThreshold) {
+            console.log(`[DynamicPricing] Current RPS: ${currentRPS.toFixed(2)} within threshold ${rpsThreshold}, returning base price: ${baseNum}`);
+            return basePrice;
+        }
+
+        const excessRPS = currentRPS - rpsThreshold;
+        const priceIncrease = excessRPS * multiplier;
+        const newPrice = Math.min(baseNum + priceIncrease, maxNum);
+        const returnedPrice = `$${newPrice.toFixed(4)}`;
+        console.log(`[DynamicPricing] Current RPS: ${currentRPS.toFixed(2)} exceeds threshold ${rpsThreshold}, increasing price to: ${returnedPrice}`);
+        return returnedPrice;
+    }
+
+    getRPSDetails() {
+        return {
+            rps: this.rpsTracker.getCurrentRPS(),
+            requestCount: this.rpsTracker.requestTimestamps.length
+        }
+    }
+
+    getNumberIntFromPrice(originalPrice: Price, price: Price): number {
+
+        if (typeof price === 'string') {
+            return parseFloat(price.replace('$', ''));
+        }
+        if (typeof price === 'number') {
+            return price;
+        }
+        return typeof originalPrice === "string" ? parseFloat(originalPrice.replace('$', '')) : 0.001;
     }
 }

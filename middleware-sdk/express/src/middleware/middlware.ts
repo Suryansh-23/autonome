@@ -4,32 +4,32 @@ import { paymentMiddleware } from "../x402-payment/payment";
 import { Address } from "viem";
 import { RoutesConfig, FacilitatorConfig, PaywallConfig } from "x402/types";
 import { DynamicPricingCalculator } from "../price-calculator/price";
-
-const pricingCalculator = new DynamicPricingCalculator({
-  basePrice: 1,
-  maxPrice: 10,
-  rpsThreshold: 5,
-  multiplier: 2
-});
+import { DynamicPricingConfig } from "../config/config";
 
 export function middleware(
   payTo: Address,
   routes: RoutesConfig,
   facilitator?: FacilitatorConfig,
   paywall?: PaywallConfig,
+  dynamicPricingConfig?: DynamicPricingConfig
 ) {
-  const paymentHandler = paymentMiddleware(payTo, routes, facilitator, paywall, pricingCalculator.calculatePrice);
+
+  let paymentHandler;
+  if (dynamicPricingConfig) {
+    const pricingCalculator = new DynamicPricingCalculator(dynamicPricingConfig);
+    paymentHandler = paymentMiddleware(payTo, routes, facilitator, paywall, pricingCalculator.calculatePrice);
+  } else {
+    console.log(`[middleware-log] dynamic pricing config is absent, using default static pricing`)
+    paymentHandler = paymentMiddleware(payTo, routes, facilitator, paywall);
+  }
 
   return function (req: Request, res: Response, next: NextFunction) {
-    // console.log("Middleware executed");
     const isBot = botDetection(req, res, next);
     
     if (isBot) {
-      // console.log("Bot detected");
       // Bot detected → require payment
       return paymentHandler(req, res, next);
     } else {
-      // console.log("Human detected");
       // Human user → allow through
       return next();
     }
