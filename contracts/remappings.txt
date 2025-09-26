@@ -1,3 +1,4 @@
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
 @ens/contracts/=lib/ens-contracts/contracts/
+@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/src/v0.8/
 forge-std/=lib/forge-std/src/
