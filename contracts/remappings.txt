@@ -1,4 +1,6 @@
+@arachnid/string-utils/=lib/durin/lib/solidity-stringutils/src/
+@ensdomains/ens-contracts/=lib/durin/lib/ens-contracts/contracts/
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
-@ens/contracts/=lib/ens-contracts/contracts/
 @chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/src/v0.8/
+@durin/contracts/=lib/durin/src/
 forge-std/=lib/forge-std/src/
