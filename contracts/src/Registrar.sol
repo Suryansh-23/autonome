@@ -23,18 +23,19 @@ contract Registrar is Ownable, FunctionsClient, IERC721Receiver, ILogAutomation 
     uint64 public subscriptionId;
     bytes32 public donId;
     uint32 public gasLimit = 300_000;
+    address public automationRegistry;
 
     // Domain verification tracking
     struct Registration {
         address owner;
-        string fullDomain; // "bob.github.io"
+        string fullDomain;
         uint256 registrationTime;
         bool verified;
     }
 
     struct PendingRegistration {
-        string[] domainParts; // ["bob", "github", "io"]
-        string fullDomain; // "bob.github.io"
+        string[] domainParts;
+        string fullDomain;
         address requester;
     }
 
@@ -56,6 +57,8 @@ contract Registrar is Ownable, FunctionsClient, IERC721Receiver, ILogAutomation 
         "if (responseAddress.toLowerCase() !== address.toLowerCase()) {" "  return Functions.encodeUint256(0);" "}"
         "return Functions.encodeUint256(1);";
 
+    string private constant FAVICON_ICON_BASE_URL = "https://favicon.is/";
+
     /// @notice Emitted when a new name is registered
     /// @param label The registered label (e.g. "bob" in "bob.github.io.x0x0.eth")
     /// @param node The node hash of the registered name
@@ -74,7 +77,6 @@ contract Registrar is Ownable, FunctionsClient, IERC721Receiver, ILogAutomation 
     error Registrar__InvalidDomain();
     error Registrar__DomainNotAvailable();
     error Registrar__NotOwner();
-    error Registrar__DomainNotVerified();
     error Registrar__InvalidAddress();
 
     /// @notice Initializes the registrar with a registry contract
@@ -88,17 +90,16 @@ contract Registrar is Ownable, FunctionsClient, IERC721Receiver, ILogAutomation 
         address _registry,
         address _functionsRouter,
         bytes32 _donId,
-        uint64 _subscriptionId
+        uint64 _subscriptionId,
+        address _automationRegistry
     ) Ownable(_initialOwner) FunctionsClient(_functionsRouter) {
-        // Calculate the coinType for the current chain according to ENSIP-11
-        coinType = (0x80000000 | block.chainid) >> 0;
+        coinType = 0x80000000 | block.chainid;
 
-        // Save the registry address
         registry = IL2Registry(_registry);
 
-        // Initialize Chainlink Functions
         donId = _donId;
         subscriptionId = _subscriptionId;
+        automationRegistry = _automationRegistry;
     }
 
     /// @notice Registers a new domain with verification
@@ -123,12 +124,7 @@ contract Registrar is Ownable, FunctionsClient, IERC721Receiver, ILogAutomation 
         args[1] = Strings.toHexString(uint160(msg.sender), 20);
         FunctionsRequest.setArgs(req, args);
 
-        bytes32 requestId = _sendRequest(
-            FunctionsRequest.encodeCBOR(req),
-            subscriptionId,
-            gasLimit,
-            donId
-        );
+        bytes32 requestId = _sendRequest(FunctionsRequest.encodeCBOR(req), subscriptionId, gasLimit, donId);
 
         // Store pending registration
         pendingRegistrations[requestId] =
@@ -171,6 +167,10 @@ contract Registrar is Ownable, FunctionsClient, IERC721Receiver, ILogAutomation 
         domainVerified[pending.fullDomain] = true;
 
         _registerDomainHierarchy(pending.domainParts, pending.fullDomain, pending.requester);
+
+        emit DomainRegistered(pending.fullDomain, pending.requester);
+
+        delete pendingRegistrations[requestId];
     }
 
     /// @notice Registers a domain hierarchy (creates parent domains if needed)
@@ -205,6 +205,9 @@ contract Registrar is Ownable, FunctionsClient, IERC721Receiver, ILogAutomation 
                         registrationTime: block.timestamp,
                         verified: true
                     });
+
+                    string memory facivonIcon = string.concat(FAVICON_ICON_BASE_URL, fullDomain);
+                    registry.setText(currentNode, "avatar", facivonIcon);
                 }
 
                 emit NameRegistered(label, currentNode, (i == 1) ? owner : address(this));
@@ -284,13 +287,13 @@ contract Registrar is Ownable, FunctionsClient, IERC721Receiver, ILogAutomation 
 
     /// @notice Transfers ownership of a registered domain
     function transferDomain(string calldata fullDomain, address newOwner) external {
-        if (newOwner == address(0)) revert Registrar__InvalidAddress();
+        require(newOwner != address(0), Registrar__InvalidAddress());
 
         string[] memory domainParts = _parseDomain(fullDomain);
         bytes32 node = _buildNodeFromParts(domainParts);
 
         Registration storage reg = registrations[node];
-        if (reg.owner != msg.sender) revert Registrar__NotOwner();
+        require(reg.owner == msg.sender, Registrar__NotOwner());
 
         registry.transferFrom(msg.sender, newOwner, uint256(node));
 
@@ -317,6 +320,7 @@ contract Registrar is Ownable, FunctionsClient, IERC721Receiver, ILogAutomation 
         gasLimit = _gasLimit;
     }
 
+    /// @inheritdoc IERC721Receiver
     function onERC721Received(address, address, uint256, bytes memory) public override returns (bytes4) {
         return this.onERC721Received.selector;
     }
