@@ -6,7 +6,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "start": "tsx --env-file=.env index.ts",
-    "build": "tsup",
+    "build": "NODE_OPTIONS=--max-old-space-size=4096 tsup",
     "build:paywall": "tsx src/paywall/build.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -14,7 +14,8 @@
     "format": "prettier -c .prettierrc --write \"**/*.{ts,js,cjs,json,md}\"",
     "format:check": "prettier -c .prettierrc --check \"**/*.{ts,js,cjs,json,md}\"",
     "lint": "eslint . --ext .ts --fix",
-    "lint:check": "eslint . --ext .ts"
+    "lint:check": "eslint . --ext .ts",
+    "dev": "tsx src/app.ts"
   },
   "keywords": [],
   "license": "Apache-2.0",
@@ -25,6 +26,7 @@
     "@coinbase/onchainkit": "^0.38.14",
     "@craftamap/esbuild-plugin-html": "^0.9.0",
     "@eslint/js": "^9.24.0",
+    "@types/express": "^5.0.3",
     "@types/node": "^22.13.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -56,6 +58,8 @@
     "@solana-program/token-2022": "^0.4.2",
     "@solana/kit": "^2.1.1",
     "@solana/transaction-confirmation": "^2.1.1",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
     "viem": "^2.21.26",
     "wagmi": "^2.15.6",
     "zod": "^3.24.2"
