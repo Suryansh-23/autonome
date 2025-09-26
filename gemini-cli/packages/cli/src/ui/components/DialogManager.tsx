@@ -154,6 +154,7 @@ export const DialogManager = () => {
       </Box>
     );
   }
+  // Wallet dialog removed; wallet auth runs via CLI flow.
   if (uiState.isEditorDialogOpen) {
     return (
       <Box flexDirection="column">

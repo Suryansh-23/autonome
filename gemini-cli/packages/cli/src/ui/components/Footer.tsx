@@ -33,6 +33,7 @@ export interface FooterProps {
   nightly: boolean;
   vimMode?: string;
   isTrustedFolder?: boolean;
+  walletAddress?: string;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -49,6 +50,7 @@ export const Footer: React.FC<FooterProps> = ({
   nightly,
   vimMode,
   isTrustedFolder,
+  walletAddress,
 }) => {
   const { columns: terminalWidth } = useTerminalSize();
 
@@ -122,7 +124,7 @@ export const Footer: React.FC<FooterProps> = ({
         )}
       </Box>
 
-      {/* Right Section: Gemini Label and Console Summary */}
+      {/* Right Section: Gemini Label, Wallet, and Console Summary */}
       <Box alignItems="center" paddingTop={isNarrow ? 1 : 0}>
         <Box alignItems="center">
           <Text color={theme.text.accent}>
@@ -136,6 +138,15 @@ export const Footer: React.FC<FooterProps> = ({
           {showMemoryUsage && <MemoryUsageDisplay />}
         </Box>
         <Box alignItems="center" paddingLeft={2}>
+          {walletAddress && (
+            <Text color={theme.text.secondary}>
+              <Text color={theme.ui.symbol}>| </Text>
+              wallet:{' '}
+              <Text color={theme.text.link}>
+                {shortAddress(walletAddress)}
+              </Text>
+            </Text>
+          )}
           {corgiMode && (
             <Text>
               <Text color={theme.ui.symbol}>| </Text>
@@ -157,3 +168,9 @@ export const Footer: React.FC<FooterProps> = ({
     </Box>
   );
 };
+
+function shortAddress(addr: string): string {
+  if (!addr) return '';
+  if (addr.length <= 10) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}

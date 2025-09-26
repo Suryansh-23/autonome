@@ -12,6 +12,7 @@ import { ShellModeIndicator } from './ShellModeIndicator.js';
 import { DetailedMessagesDisplay } from './DetailedMessagesDisplay.js';
 import { InputPrompt } from './InputPrompt.js';
 import { Footer, type FooterProps } from './Footer.js';
+import { readStoredWalletIdentity } from '../../wallet/porto.js';
 import { ShowMoreLines } from './ShowMoreLines.js';
 import { OverflowProvider } from '../contexts/OverflowContext.js';
 import { Colors } from '../colors.js';
@@ -40,6 +41,7 @@ export const Composer = () => {
   const { contextFileNames, showAutoAcceptIndicator } = uiState;
 
   // Build footer props from context values
+  const walletIdentity = readStoredWalletIdentity();
   const footerProps: Omit<FooterProps, 'vimMode'> = {
     model: config.getModel(),
     targetDir: config.getTargetDir(),
@@ -54,6 +56,7 @@ export const Composer = () => {
     promptTokenCount: uiState.sessionStats.lastPromptTokenCount,
     nightly: uiState.nightly,
     isTrustedFolder: uiState.isTrustedFolder,
+    walletAddress: walletIdentity?.address,
   };
 
   return (

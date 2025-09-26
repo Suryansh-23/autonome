@@ -117,6 +117,7 @@ async function relaunchWithAdditionalArgs(additionalArgs: string[]) {
 }
 
 import { runZedIntegration } from './zed-integration/zedIntegration.js';
+import { maybeAutoConnectWallet } from './wallet/porto.js';
 
 export function setupUnhandledRejectionHandler() {
   let unhandledRejectionOccurred = false;
@@ -359,6 +360,15 @@ export async function main() {
         await relaunchWithAdditionalArgs(memoryArgs);
         process.exit(0);
       }
+    }
+  }
+
+  // Wallet auto-connect (Porto) before interactive UI mounts
+  try {
+    await maybeAutoConnectWallet(settings, argv.walletChain, config);
+  } catch (e) {
+    if (config.getDebugMode()) {
+      console.error('Wallet auto-connect error:', e);
     }
   }
 

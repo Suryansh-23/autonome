@@ -369,6 +369,55 @@ const SETTINGS_SCHEMA = {
     },
   },
 
+  wallet: {
+    type: 'object',
+    label: 'Wallet',
+    category: 'Wallet',
+    requiresRestart: true,
+    default: {},
+    description: 'Wallet identity integration settings.',
+    showInDialog: false,
+    properties: {
+      provider: {
+        type: 'enum',
+        label: 'Wallet Provider',
+        category: 'Wallet',
+        requiresRestart: false,
+        default: 'none',
+        description: 'Select the wallet identity provider.',
+        showInDialog: true,
+        options: [
+          { value: 'none', label: 'None' },
+          { value: 'porto', label: 'Porto (Passkey CLI Dialog)' },
+        ] as const,
+      },
+      autoConnect: {
+        type: 'boolean',
+        label: 'Wallet Auto-Connect on Startup',
+        category: 'Wallet',
+        requiresRestart: false,
+        default: false,
+        description:
+          'Automatically run the wallet connection flow on startup (before UI renders).',
+        showInDialog: true,
+      },
+      chain: {
+        type: 'enum',
+        label: 'Wallet Chain',
+        category: 'Wallet',
+        requiresRestart: false,
+        default: 'base-sepolia',
+        description:
+          'Blockchain network used for wallet connection (default base-sepolia).',
+        showInDialog: true,
+        options: [
+          { value: 'base-sepolia', label: 'Base Sepolia (Testnet)' },
+          { value: 'base', label: 'Base (Mainnet)' },
+        ] as const,
+      },
+    },
+  },
+
   ide: {
     type: 'object',
     label: 'IDE',

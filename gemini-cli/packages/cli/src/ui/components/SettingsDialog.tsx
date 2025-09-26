@@ -149,11 +149,10 @@ export function SettingsDialog({
             setPendingSettings((prev) =>
               setPendingSettingValueAny(key, newValue, prev),
             );
+          } else {
+            // Non-toggleable types are ignored here.
+            return;
           }
-
-          setPendingSettings((prev) =>
-            setPendingSettingValue(key, newValue as boolean, prev),
-          );
 
           if (!requiresRestart(key)) {
             const immediateSettings = new Set([key]);
@@ -620,9 +619,18 @@ export function SettingsDialog({
         const restartRequiredSet = new Set(restartRequiredSettings);
 
         if (restartRequiredSet.size > 0) {
+          // Compose an effective pending settings that includes any global pending changes
+          let effectivePending = structuredClone(pendingSettings);
+          for (const [key, value] of globalPendingChanges.entries()) {
+            effectivePending = setPendingSettingValueAny(
+              key,
+              value as SettingsValue,
+              effectivePending,
+            );
+          }
           saveModifiedSettings(
             restartRequiredSet,
-            pendingSettings,
+            effectivePending,
             settings,
             selectedScope,
           );

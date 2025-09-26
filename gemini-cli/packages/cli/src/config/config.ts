@@ -81,6 +81,7 @@ export interface CliArgs {
   useSmartEdit: boolean | undefined;
   sessionSummary: string | undefined;
   promptWords: string[] | undefined;
+  walletChain?: string | undefined;
 }
 
 export async function parseArguments(settings: Settings): Promise<CliArgs> {
@@ -233,6 +234,12 @@ export async function parseArguments(settings: Settings): Promise<CliArgs> {
         .option('session-summary', {
           type: 'string',
           description: 'File to write session summary to.',
+        })
+        .option('wallet-chain', {
+          type: 'string',
+          description:
+            'Override wallet chain (base-sepolia | base). Defaults to settings.wallet.chain.',
+          choices: ['base-sepolia', 'base'] as const,
         })
         .deprecateOption(
           'telemetry',

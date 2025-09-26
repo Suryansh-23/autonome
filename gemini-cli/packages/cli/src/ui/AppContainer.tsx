@@ -75,6 +75,7 @@ import { useAutoAcceptIndicator } from './hooks/useAutoAcceptIndicator.js';
 import { useWorkspaceMigration } from './hooks/useWorkspaceMigration.js';
 import { useSessionStats } from './contexts/SessionContext.js';
 import { useGitBranchName } from './hooks/useGitBranchName.js';
+import { readStoredWalletIdentity } from '../wallet/porto.js';
 
 const CTRL_EXIT_PROMPT_DURATION_MS = 1000;
 
@@ -114,6 +115,7 @@ export const AppContainer = (props: AppContainerProps) => {
     initializationResult.geminiMdFileCount,
   );
   const [shellModeActive, setShellModeActive] = useState(false);
+  // Wallet dialog removed.
   const [modelSwitchedFromQuotaError, setModelSwitchedFromQuotaError] =
     useState<boolean>(false);
   const [historyRemountKey, setHistoryRemountKey] = useState(0);
@@ -164,6 +166,24 @@ export const AppContainer = (props: AppContainerProps) => {
       // handled by the global catch.
       await config.initialize();
       setConfigInitialized(true);
+
+      // If a wallet identity was persisted during startup auto-connect, announce it in history
+      try {
+        const identity = readStoredWalletIdentity();
+        if (identity?.address) {
+          historyManager.addItem(
+            {
+              type: MessageType.INFO,
+              text: `Wallet connected (Porto): ${identity.address}`,
+            },
+            Date.now(),
+          );
+        }
+      } catch (e) {
+        if (config.getDebugMode()) {
+          console.error('Failed to read wallet identity:', e);
+        }
+      }
     })();
     registerCleanup(async () => {
       const ideClient = await IdeClient.getInstance();
@@ -1125,6 +1145,8 @@ Logging in with Google... Please restart Gemini CLI to continue.
       handleProQuotaChoice,
     ],
   );
+
+  // Wallet dialog removed.
 
   return (
     <UIStateContext.Provider value={uiState}>
