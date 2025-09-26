@@ -3,6 +3,14 @@ import { botDetection } from "../bot-detection/bot";
 import { paymentMiddleware } from "../x402-payment/payment";
 import { Address } from "viem";
 import { RoutesConfig, FacilitatorConfig, PaywallConfig } from "x402/types";
+import { DynamicPricingCalculator } from "../price-calculator/price";
+
+const pricingCalculator = new DynamicPricingCalculator({
+  basePrice: 1,
+  maxPrice: 10,
+  rpsThreshold: 5,
+  multiplier: 2
+});
 
 export function middleware(
   payTo: Address,
@@ -10,7 +18,7 @@ export function middleware(
   facilitator?: FacilitatorConfig,
   paywall?: PaywallConfig,
 ) {
-  const paymentHandler = paymentMiddleware(payTo, routes, facilitator, paywall);
+  const paymentHandler = paymentMiddleware(payTo, routes, facilitator, paywall, pricingCalculator.calculatePrice);
 
   return function (req: Request, res: Response, next: NextFunction) {
     // console.log("Middleware executed");

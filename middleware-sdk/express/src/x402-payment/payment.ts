@@ -22,8 +22,34 @@ import {
   RoutesConfig,
   settleResponseHeader,
   SupportedEVMNetworks,
+  Price,
+  Network
 } from "x402/types";
 import { useFacilitator } from "x402/verify";
+
+/**
+ * A function that computes a dynamic price based on the original price and request/network context.
+ *
+ * Implementations receive the pre-calculated `originalPrice` and may inspect the incoming HTTP
+ * `Request` and the current `Network` context to produce a modified `Price` (for example by
+ * applying discounts, taxes, or exchange-rate adjustments).
+ *
+ * Implementations should not mutate the provided `originalPrice`; instead they should return a
+ * new `Price` value. The function is synchronous and may throw to indicate an error during
+ * calculation.
+ *
+ * @param originalPrice - The price computed earlier in the pipeline that may be adjusted.
+ * @param req - The incoming HTTP request (e.g. to read headers, cookies, query params, auth info).
+ * @param network - Network/environment context (e.g. chain, region, currency settings).
+ * @returns The resulting `Price` after applying dynamic adjustments.
+ *
+ * @example
+ * const applyDiscount: DynamicPriceCalculator = (originalPrice, req, network) => {
+ *   const discount = req.headers['x-discount'] ? parseFloat(String(req.headers['x-discount'])) : 0;
+ *   return { ...originalPrice, amount: Math.max(0, originalPrice.amount * (1 - discount)) };
+ * };
+ */
+export type DynamicPriceCalculator = (originalPrice: Price, req: Request, network: Network) => Price;
 
 /**
  * Creates a payment middleware factory for Express
@@ -32,6 +58,7 @@ import { useFacilitator } from "x402/verify";
  * @param routes - Configuration for protected routes and their payment requirements
  * @param facilitator - Optional configuration for the payment facilitator service
  * @param paywall - Optional configuration for the default paywall
+ * @param dynamicPriceCalculator - Optional function to calculate dynamic pricing based on request
  * @returns An Express middleware handler
  */
 export function paymentMiddleware(
@@ -39,6 +66,7 @@ export function paymentMiddleware(
   routes: RoutesConfig,
   facilitator?: FacilitatorConfig,
   paywall?: PaywallConfig,
+  dynamicPriceCalculator?: DynamicPriceCalculator,
 ) {
   const { verify, settle } = useFacilitator(facilitator);
   const x402Version = 1;
@@ -58,7 +86,15 @@ export function paymentMiddleware(
       return next();
     }
     console.log(`[paymentMiddleware] endpoint called is a part of the protected routes, x402-payment required`);
-    const { price, network, config = {} } = matchingRoute.config;
+    let { price, network, config = {} } = matchingRoute.config;
+
+    if (dynamicPriceCalculator) {
+      console.log(`[paymentMiddleware] Dynamic pricing calculator found, calculating dynamic price`);
+      // price = dynamicPriceCalculator(origniall
+      const originalPrice = price;
+      price = dynamicPriceCalculator(originalPrice, req, network);
+      console.log(`[paymentMiddleware] Dynamic pricing: ${originalPrice} -> ${price}`);
+    }
     const {
       description,
       mimeType,
@@ -71,6 +107,7 @@ export function paymentMiddleware(
     } = config;
 
     const atomicAmountForAsset = processPriceToAtomicAmount(price, network);
+    console.log(`[paymentMiddleware] Processed price ${price} on network ${network} to atomic amount`, atomicAmountForAsset);
     if ("error" in atomicAmountForAsset) {
       throw new Error(atomicAmountForAsset.error);
     }
