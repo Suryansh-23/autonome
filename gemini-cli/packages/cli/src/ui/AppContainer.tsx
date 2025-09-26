@@ -80,8 +80,10 @@ import {
   getPendingBudgetPrompt,
   clearPendingBudgetPrompt,
   type BudgetPromptState,
+  type SessionBudgetSnapshot,
   applySessionBudgetSelection,
   setSessionBudgetLimitUSDC,
+  getSessionBudgetSnapshot,
 } from '../wallet/porto.js';
 
 const CTRL_EXIT_PROMPT_DURATION_MS = 1000;
@@ -149,6 +151,9 @@ export const AppContainer = (props: AppContainerProps) => {
     useState<BudgetPromptState | null>(null);
   const [isBudgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const paymentsEnabled = Boolean(settings.merged.wallet?.payments?.enabled);
+  const [sessionBudget, setSessionBudget] = useState<SessionBudgetSnapshot | null>(
+    getSessionBudgetSnapshot(),
+  );
 
   // Auto-accept indicator
   const showAutoAcceptIndicator = useAutoAcceptIndicator({
@@ -232,6 +237,16 @@ export const AppContainer = (props: AppContainerProps) => {
   }, [paymentsEnabled]);
 
   // Watch for model changes (e.g., from Flash fallback)
+  useEffect(() => {
+    const handler = (snapshot: SessionBudgetSnapshot | null) => {
+      setSessionBudget(snapshot);
+    };
+    appEvents.on(AppEvent.SessionBudgetUpdated, handler);
+    return () => {
+      appEvents.off(AppEvent.SessionBudgetUpdated, handler);
+    };
+  }, []);
+
   useEffect(() => {
     const checkModelChange = () => {
       const effectiveModel = getEffectiveModel();
@@ -1145,6 +1160,7 @@ Logging in with Google... Please restart Gemini CLI to continue.
       isRestarting,
       isBudgetDialogOpen,
       budgetPrompt,
+      sessionBudget,
     }),
     [
       historyManager.history,
@@ -1219,6 +1235,7 @@ Logging in with Google... Please restart Gemini CLI to continue.
       currentModel,
       isBudgetDialogOpen,
       budgetPrompt,
+      sessionBudget,
     ],
   );
 

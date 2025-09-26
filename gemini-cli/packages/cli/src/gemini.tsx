@@ -122,6 +122,7 @@ import {
   ensureWalletDialogOpen,
   ensureSessionBudgetFundedUSDC,
   getEphemeralWalletClient,
+  registerSessionSpend,
 } from './wallet/porto.js';
 import { setCoreFetch } from '@google/gemini-cli-core';
 import {
@@ -129,7 +130,10 @@ import {
   decodeXPaymentResponse,
   type Signer,
 } from 'x402-fetch';
-import { selectPaymentRequirements } from 'x402/client';
+import {
+  selectPaymentRequirements,
+  type PaymentRequirementsSelector,
+} from 'x402/client';
 
 export function setupUnhandledRejectionHandler() {
   let unhandledRejectionOccurred = false;
@@ -393,12 +397,17 @@ export async function main() {
       const chain = (payCfg.chain ||
         settings.merged.wallet?.chain ||
         'base-sepolia') as 'base-sepolia' | 'base';
-      const selector = (reqs: any[]) => {
+      const baseSelector: PaymentRequirementsSelector = (
+        reqs: unknown,
+        _network?: unknown,
+        _scheme?: unknown,
+      ) => {
+        const list = Array.isArray(reqs) ? reqs : [reqs];
         try {
-          console.info('[x402] available accepts:', JSON.stringify(reqs));
+          console.info('[x402] available accepts:', JSON.stringify(list));
           const preferred = chain === 'base' ? 'base' : 'base-sepolia';
           const selected = selectPaymentRequirements(
-            reqs as any,
+            list as any,
             preferred,
             'exact',
           );
@@ -413,13 +422,14 @@ export async function main() {
               domain: { name: dom?.name, version: dom?.version },
             }),
           );
-          return selected;
+          return selected as any;
         } catch (e) {
           console.warn(
             '[x402] requirement selection failed, defaulting to first:',
             e,
           );
-          return (reqs && reqs[0]) || reqs;
+          const fallback = Array.isArray(list) ? list[0] : reqs;
+          return fallback as any;
         }
       };
 
@@ -435,20 +445,33 @@ export async function main() {
         const signer = (await getEphemeralWalletClient()) as unknown as Signer;
         const maxValue = BigInt(Math.round(budget * 1_000_000));
         console.info('[x402] Max budget set to', budget, 'USDC.');
-        const basePaidFetch = wrapFetchWithPayment(
-          globalThis.fetch,
-          signer,
-          maxValue,
-          selector as any,
-        );
         const paidFetchWithDialog = (async (
           input: RequestInfo | URL,
           init?: RequestInit,
         ) => {
           await ensureSessionBudgetFundedUSDC(budget);
           await ensureWalletDialogOpen();
-          // @ts-ignore wrapper has fetch-compatible signature
+          let paymentAmount: bigint = 0n;
+          const trackingSelector: PaymentRequirementsSelector = (
+            requirements,
+            network,
+            scheme,
+          ) => {
+            const selected = baseSelector(requirements, network, scheme) as any;
+            const rawAmount = selected?.maxAmountRequired;
+            paymentAmount = rawAmount ? BigInt(rawAmount) : 0n;
+            return selected;
+          };
+
+          const basePaidFetch = wrapFetchWithPayment(
+            globalThis.fetch,
+            signer,
+            maxValue,
+            trackingSelector as any,
+          ) as typeof fetch;
+
           const resp: Response = await basePaidFetch(input, init);
+          let paymentSucceeded = false;
           try {
             const header = resp.headers.get('x-payment-response');
             if (header) {
@@ -457,13 +480,18 @@ export async function main() {
                 '[x402] Payment response received:',
                 JSON.stringify(decoded),
               );
+              paymentSucceeded = Boolean(decoded?.success);
             } else {
               console.info(
                 '[x402] No x-payment-response header present on response',
               );
+              paymentSucceeded = resp.ok && paymentAmount > 0n;
             }
           } catch (e) {
             console.warn('[x402] Failed to decode x-payment-response header:', e);
+          }
+          if (paymentSucceeded && paymentAmount > 0n && resp.ok) {
+            registerSessionSpend(paymentAmount);
           }
           return resp;
         }) as unknown as typeof fetch;

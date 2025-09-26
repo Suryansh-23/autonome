@@ -15,6 +15,7 @@ import Gradient from 'ink-gradient';
 import { MemoryUsageDisplay } from './MemoryUsageDisplay.js';
 import { ContextUsageDisplay } from './ContextUsageDisplay.js';
 import { DebugProfiler } from './DebugProfiler.js';
+import type { SessionBudgetSnapshot } from '../../wallet/porto.js';
 
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { isNarrowWidth } from '../utils/isNarrowWidth.js';
@@ -33,7 +34,7 @@ export interface FooterProps {
   nightly: boolean;
   vimMode?: string;
   isTrustedFolder?: boolean;
-  walletAddress?: string;
+  sessionBudget: SessionBudgetSnapshot | null;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -50,7 +51,7 @@ export const Footer: React.FC<FooterProps> = ({
   nightly,
   vimMode,
   isTrustedFolder,
-  walletAddress,
+  sessionBudget,
 }) => {
   const { columns: terminalWidth } = useTerminalSize();
 
@@ -138,13 +139,19 @@ export const Footer: React.FC<FooterProps> = ({
           {showMemoryUsage && <MemoryUsageDisplay />}
         </Box>
         <Box alignItems="center" paddingLeft={2}>
-          {walletAddress && (
+          {sessionBudget && (
             <Text color={theme.text.secondary}>
               <Text color={theme.ui.symbol}>| </Text>
-              wallet:{' '}
+              budget:{' '}
               <Text color={theme.text.link}>
-                {shortAddress(walletAddress)}
+                {formatBudget(sessionBudget.balance)}
               </Text>
+              {sessionBudget.limit > 0n && (
+                <Text color={theme.text.secondary}>
+                  {' '}/ {formatBudget(sessionBudget.limit)}
+                </Text>
+              )}
+              <Text color={theme.text.secondary}> USDC</Text>
             </Text>
           )}
           {corgiMode && (
@@ -169,8 +176,14 @@ export const Footer: React.FC<FooterProps> = ({
   );
 };
 
-function shortAddress(addr: string): string {
-  if (!addr) return '';
-  if (addr.length <= 10) return addr;
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+const USDC_DECIMALS = 1_000_000n;
+
+function formatBudget(amount: bigint): string {
+  const whole = amount / USDC_DECIMALS;
+  const fraction = amount % USDC_DECIMALS;
+  if (fraction === 0n) {
+    return whole.toString();
+  }
+  const fractionStr = fraction.toString().padStart(6, '0').replace(/0+$/, '');
+  return `${whole.toString()}.${fractionStr}`;
 }

@@ -4,25 +4,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type {
-  WalletChainSetting,
-  WalletIdentityRecord,
-  BudgetPromptState,
-  SessionBudgetSnapshot,
-} from './porto/types.js';
+export type { WalletChainSetting, WalletIdentityRecord, BudgetPromptState } from './types.js';
+export type { SessionBudgetSnapshot } from './types.js';
 export {
   getPendingBudgetPrompt,
   clearPendingBudgetPrompt,
   readStoredWalletIdentity,
   clearStoredWalletIdentity,
   getSessionBudgetSnapshot,
-} from './porto/state.js';
+} from './state.js';
 export {
   setSessionBudgetLimitUSDC,
   applySessionBudgetSelection,
   ensureSessionBudgetFundedUSDC,
   registerSessionSpend,
-} from './porto/funding.js';
+} from './funding.js';
 export {
   connectPortoWallet,
   maybeAutoConnectWallet,
@@ -30,4 +26,4 @@ export {
   getEphemeralWalletClient,
   getEphemeralAccount,
   ensureWalletDialogOpen,
-} from './porto/connection.js';
+} from './connection.js';

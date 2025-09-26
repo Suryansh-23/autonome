@@ -10,6 +10,7 @@ export enum AppEvent {
   OpenDebugConsole = 'open-debug-console',
   LogError = 'log-error',
   ShowBudgetDialog = 'show-budget-dialog',
+  SessionBudgetUpdated = 'session-budget-updated',
 }
 
 export const appEvents = new EventEmitter();
