@@ -162,11 +162,15 @@ export async function maybeAutoConnectWallet(
   argvWalletChain: string | undefined,
   _config: Config,
 ): Promise<WalletIdentityRecord | null> {
-  const provider = settings.merged.wallet?.provider as unknown as string | undefined;
+  const provider = settings.merged.wallet?.provider as unknown as
+    | string
+    | undefined;
   const auto = settings.merged.wallet?.autoConnect ?? false;
   if (provider !== 'porto' || !auto) return null;
 
-  const chainSetting = (argvWalletChain || settings.merged.wallet?.chain || 'base-sepolia') as WalletChainSetting;
+  const chainSetting = (argvWalletChain ||
+    settings.merged.wallet?.chain ||
+    'base-sepolia') as WalletChainSetting;
   try {
     const identity = await connectPortoWallet(chainSetting, (url) => {
       console.log(`Opening browser to complete wallet login: ${url}`);

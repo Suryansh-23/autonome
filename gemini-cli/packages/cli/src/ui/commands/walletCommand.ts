@@ -11,6 +11,7 @@ import {
   connectPortoWallet,
   type WalletIdentityRecord,
 } from '../../wallet/porto.js';
+import open from 'open';
 
 export const walletCommand: SlashCommand = {
   name: 'wallet',
@@ -126,6 +127,29 @@ export const walletCommand: SlashCommand = {
           messageType: 'info',
           content: `Wallet: ${identity.address} (chains: ${chains})`,
         } as const;
+      },
+    },
+    {
+      name: 'dashboard',
+      description:
+        'Open the Porto wallet dashboard (https://id.porto.sh/) in your default browser.',
+      kind: CommandKind.BUILT_IN,
+      async action() {
+        const url = 'https://id.porto.sh/';
+        try {
+          await open(url);
+          return {
+            type: 'message',
+            messageType: 'info',
+            content: `Opened Porto wallet dashboard: ${url}`,
+          } as const;
+        } catch (e) {
+          return {
+            type: 'message',
+            messageType: 'error',
+            content: `Failed to open Porto dashboard. You can open it manually: ${url}`,
+          } as const;
+        }
       },
     },
   ],
