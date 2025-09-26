@@ -17,7 +17,8 @@ export interface EIP1559InspiredConfig {
     maxChangeRate: number;      
     targetUtilization: number;  
     smoothingWindow: number;    
-    elasticityMultiplier: number; 
+    elasticityMultiplier: number;
+    adjustmentInterval: number; // milliseconds between fee adjustments
 }
 
 /**
@@ -32,7 +33,8 @@ export function createEIP1559Config(overrides: Partial<EIP1559InspiredConfig> = 
         maxChangeRate: 0.125,       
         targetUtilization: 0.5,
         smoothingWindow: 30,           
-        elasticityMultiplier: 2.0     
+        elasticityMultiplier: 2.0,
+        adjustmentInterval: 10000      // 10 seconds in production
     };
     
     return { ...defaults, ...overrides };

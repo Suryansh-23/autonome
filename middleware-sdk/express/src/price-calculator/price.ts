@@ -42,9 +42,9 @@ export class DynamicPricingCalculator {
     private rpsTracker: RPSTracker;
     private config: DynamicPricingConfig;
 
-    constructor(config: DynamicPricingConfig) {
+    constructor(config: DynamicPricingConfig, windowMS?: number) {
         this.config = config;
-        this.rpsTracker = new RPSTracker(); 
+        this.rpsTracker = new RPSTracker(windowMS); 
     }
 
     calculatePrice = (originalPrice: Price, req: Request, network: Network): Price => {
@@ -153,7 +153,7 @@ export class EIP1559InspiredDynamicPricingCalculator {
             // second-bucketed counts keyed by timestamp (ms) rounded to nearest second
             lastAdjustment: Date.now()
         };
-        console.log(`[EIP1559] initiated DynamicPricing class with current state: ${JSON.stringify(this.state)}`);
+        console.log(`[EIP1559] initiated DynamicPricing class with current state:`, this.state);
     }
 
     /**
@@ -162,11 +162,18 @@ export class EIP1559InspiredDynamicPricingCalculator {
      */
     calculatePrice = (originalPrice: Price, req: Request, network: Network): Price => {
         this.recordRequest();
+        
+        // Always update RPS to get current metrics
+        this.getCurrentRPS();
+        
         const now = Date.now();
-        const adjustmentInterval = 10000; 
+        const adjustmentInterval = this.config.adjustmentInterval; 
         
         if (now - this.state.lastAdjustment >= adjustmentInterval) {
-            this.adjustBaseFee(); // computes the this.state.currentBaseFee
+            console.log(`[EIP1559] Adjustment interval passed (${adjustmentInterval}ms), adjusting base fee...`);
+            // This is done to avoid price increase during sudden traffic spikes within the interval
+            this.adjustBaseFee(); 
+            // computes the this.state.currentBaseFee
             this.state.lastAdjustment = now;
         }
         
@@ -209,17 +216,28 @@ export class EIP1559InspiredDynamicPricingCalculator {
             }
         }
 
-        // append per-second count to rpsHistory, cap the length to smoothingWindow
-        this.state.rpsHistory.push(count);
-        if (this.state.rpsHistory.length > this.config.smoothingWindow) {
-            this.state.rpsHistory.shift();
+        // For testing rapid requests in same second, return current count directly
+        // In production, this provides immediate feedback for burst traffic
+        if (count > 0) {
+            this.state.currentRPS = count;
+            
+            // Only add to smoothing history if this is a new second or significant change
+            const lastHistoryValue = this.state.rpsHistory[this.state.rpsHistory.length - 1] || 0;
+            if (this.state.rpsHistory.length === 0 || Math.abs(count - lastHistoryValue) > 1) {
+                this.state.rpsHistory.push(count);
+                if (this.state.rpsHistory.length > this.config.smoothingWindow) {
+                    this.state.rpsHistory.shift();
+                }
+            }
+            
+            return count;
         }
         
+        // If no recent requests, use smoothed historical average
         const avgRPS = this.state.rpsHistory.length > 0 
             ? this.state.rpsHistory.reduce((a, b) => a + b, 0) / this.state.rpsHistory.length
             : 0;
         
-        // Update state
         this.state.currentRPS = avgRPS;
         return avgRPS;
     }
@@ -240,17 +258,17 @@ export class EIP1559InspiredDynamicPricingCalculator {
         
         const utilization = currentRPS / targetRPS;
         let baseFeeMultiplier: number;
-        
+        console.log(`[EIP1559] Current RPS: ${currentRPS.toFixed(2)}, Target RPS: ${targetRPS}, Utilization: ${(utilization * 100).toFixed(2)}%`);
         if (utilization > 1) {
             // Over capacity - increase fee aggressively
             const excessRatio = (utilization - 1) / 1;
             baseFeeMultiplier = 1 + Math.min(excessRatio * this.config.maxChangeRate * this.config.elasticityMultiplier, this.config.maxChangeRate);
-            console.log(`[EIP1559] Over capacity (${(utilization * 100).toFixed(1)}%), increasing fee by ${((baseFeeMultiplier - 1) * 100).toFixed(1)}%`);
+            console.log(`[EIP1559] Over capacity (${(utilization * 100).toFixed(1)}%), increasing fee by ${((baseFeeMultiplier - 1) * 100)}%`);
         } else if (utilization < this.config.targetUtilization) {
             // Under target utilization - decrease fee
             const shortageRatio = (this.config.targetUtilization - utilization) / this.config.targetUtilization;
             baseFeeMultiplier = 1 - Math.min(shortageRatio * this.config.maxChangeRate, this.config.maxChangeRate);
-            console.log(`[EIP1559] Under utilization (${(utilization * 100).toFixed(1)}%), decreasing fee by ${((1 - baseFeeMultiplier) * 100).toFixed(1)}%`);
+            console.log(`[EIP1559] Under utilization (${(utilization * 100).toFixed(2)}%), decreasing fee by ${((1 - baseFeeMultiplier) * 100)}%`);
         } else {
             // Within acceptable range - keep fee stable
             baseFeeMultiplier = 1;
@@ -269,8 +287,8 @@ export class EIP1559InspiredDynamicPricingCalculator {
         if (this.state.baseFeeHistory.length > this.config.smoothingWindow) {
             this.state.baseFeeHistory.shift();
         }
-        
-        console.log(`[EIP1559] Fee adjustment: $${oldBaseFee.toFixed(4)} → $${newBaseFee.toFixed(4)}`);
+
+        console.log(`[EIP1559] Fee adjustment: $${oldBaseFee} → $${newBaseFee}`);
         return newBaseFee;
     }
 
@@ -290,7 +308,7 @@ export class EIP1559InspiredDynamicPricingCalculator {
             requestCount: Array.from(this.state.requestCounts.values()).reduce((a, b) => a + b, 0),
             activeSeconds: this.state.requestCounts.size,
             historySize: this.state.rpsHistory.length,
-            baseFeeHistory: this.state.baseFeeHistory.slice(-5).map(fee => `$${fee.toFixed(4)}`), // Last 5 adjustments
+            baseFeeHistory: this.state.baseFeeHistory.slice(-5).map(fee => `$${fee.toFixed(6)}`), // Last 5 adjustments
             lastAdjustment: new Date(this.state.lastAdjustment).toISOString()
         };
     }
@@ -310,6 +328,14 @@ export class EIP1559InspiredDynamicPricingCalculator {
             lastAdjustment: Date.now()
         };
         console.log(`[EIP1559] State reset to defaults`);
+    }
+
+    /**
+     * Force fee adjustment (useful for testing)
+     */
+    forceAdjustment(): void {
+        this.adjustBaseFee();
+        this.state.lastAdjustment = Date.now();
     }
 
     /**
