@@ -13,17 +13,28 @@ export function middleware(
   const paymentHandler = paymentMiddleware(payTo, routes, facilitator, paywall);
 
   return function (req: Request, res: Response, next: NextFunction) {
-    console.log("Middleware executed");
+    // console.log("Middleware executed");
     const isBot = botDetection(req, res, next);
     
     if (isBot) {
-      console.log("Bot detected");
+      // console.log("Bot detected");
       // Bot detected → require payment
       return paymentHandler(req, res, next);
     } else {
-      console.log("Human detected");
+      // console.log("Human detected");
       // Human user → allow through
       return next();
     }
   };
+}
+
+export function setHeaderMiddleware(evmAddress: string, res: Response, next: NextFunction) {
+  try {
+    res.setHeader('evm-address', evmAddress);
+    console.log(`[middleware-log] Set evm-address header to ${evmAddress}`);
+    next();
+  } catch (error) {
+    console.error("Error setting evm-address header:", error);
+    next(error);
+  }
 }

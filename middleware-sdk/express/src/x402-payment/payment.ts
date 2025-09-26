@@ -40,7 +40,6 @@ export function paymentMiddleware(
   facilitator?: FacilitatorConfig,
   paywall?: PaywallConfig,
 ) {
-  console.log(`[log] middlware function params: payTo=${payTo}, routes=${JSON.stringify(routes)}, facilitator=${JSON.stringify(facilitator)}, paywall=${JSON.stringify(paywall)}`);
   const { verify, settle } = useFacilitator(facilitator);
   const x402Version = 1;
 
@@ -55,10 +54,10 @@ export function paymentMiddleware(
     const matchingRoute = findMatchingRoute(routePatterns, req.path, req.method.toUpperCase());
 
     if (!matchingRoute) {
-      console.log(`[log] endpoint called is not a part of the protected routes, allowing through | no x402-payment required`);
+      console.log(`[paymentMiddleware] endpoint called is not a part of the protected routes, allowing through | no x402-payment required`);
       return next();
     }
-    console.log(`[log] endpoint called is a part of the protected routes, x402-payment required`);
+    console.log(`[paymentMiddleware] endpoint called is a part of the protected routes, x402-payment required`);
     const { price, network, config = {} } = matchingRoute.config;
     const {
       description,
