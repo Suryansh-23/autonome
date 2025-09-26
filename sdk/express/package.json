@@ -20,7 +20,7 @@
     "express": "^5.1.0",
     "isbot": "^5.1.30",
     "viem": "^2.37.5",
-    "x402": "file:../../x402/src"
+    "x402": "file:../x402/src"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",

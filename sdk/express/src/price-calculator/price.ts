@@ -153,6 +153,7 @@ export class EIP1559InspiredDynamicPricingCalculator {
             // second-bucketed counts keyed by timestamp (ms) rounded to nearest second
             lastAdjustment: Date.now()
         };
+        console.log(`[EIP1559] initiated DynamicPricing class with config:`, this.config);
         console.log(`[EIP1559] initiated DynamicPricing class with current state:`, this.state);
     }
 

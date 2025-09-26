@@ -217,6 +217,7 @@ export function paymentMiddleware(
     }
 
     try {
+      console.log(`[paymentMiddleware] Verifying payment with facilitator`);
       const response = await verify(decodedPayment, selectedPaymentRequirements);
       if (!response.isValid) {
         res.status(402).json({
@@ -265,6 +266,7 @@ export function paymentMiddleware(
     }
 
     try {
+      console.log(`[paymentMiddleware] Settling payment with facilitator`);
       const settleResponse = await settle(decodedPayment, selectedPaymentRequirements);
       const responseHeader = settleResponseHeader(settleResponse);
       res.setHeader("X-PAYMENT-RESPONSE", responseHeader);
