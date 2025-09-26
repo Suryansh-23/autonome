@@ -1,9 +1,11 @@
-// function main() {
-//     console.log("Hello, world!");
-// }
-
-// main();
-
-import { middleware } from "./middleware/middlware";
-
-export { middleware };
+export * from "./middleware/middlware";
+export type {
+  Money,
+  Network,
+  Resource,
+  RouteConfig,
+  RoutesConfig,
+  FacilitatorConfig,
+  PaywallConfig
+} from "x402/types";
+export type { Address } from "viem";
