@@ -26,6 +26,7 @@ export default function AppPage() {
 
   const contractAddress = useMemo(() => {
     const a = CONTRACTS[chainId]?.address;
+    console.log(`for chain id ${chainId}, contract address is ${a}`);
     if (!a) return undefined;
     // treat zero address as not configured
     if (/^0x0{40}$/i.test(a)) return undefined;

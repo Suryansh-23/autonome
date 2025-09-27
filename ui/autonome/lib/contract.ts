@@ -30,7 +30,7 @@ export const ABI = [
 
 export const CONTRACTS: Record<number, { address: Address }> = {
   // polygon
-  137: { address: process.env.CONTRACT_ADDRESS_POLYGON as Hex },
+  137: { address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS_POLYGON as Hex },
   // sepolia testnet (default for testing)
-  84532: { address: process.env.CONTRACT_ADDRESS_BASE_SEPOLIA as Hex},
+  84532: { address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS_BASE_SEPOLIA as Hex },
 };
