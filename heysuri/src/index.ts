@@ -1,13 +1,13 @@
-import express from 'express'
-import path from 'path'
-import { middleware, Resource, setHeaderMiddleware } from 'middleware-sdk'
-import { config } from 'dotenv';
+import express from "express";
+import path from "path";
+import { middleware, Resource, setHeaderMiddleware } from "middleware-sdk";
+import { config } from "dotenv";
 
 config();
-const app = express()
+const app = express();
 
-const facilitatorURL = process.env.FACILITATOR_URL as Resource
-const payTo = process.env.ADDRESS as `0x${string}`
+const facilitatorURL = process.env.FACILITATOR_URL as Resource;
+const payTo = process.env.ADDRESS as `0x${string}`;
 console.log("FACILITATOR_URL:", facilitatorURL);
 console.log("ADDRESS:", payTo);
 if (!payTo || !facilitatorURL) {
@@ -30,63 +30,69 @@ app.use(middleware(
 ))
 
 // Serve static files from public directory
-app.use(express.static(path.join(__dirname, '..', 'public')))
+app.use(express.static(path.join(__dirname, "..", "public")));
 
 // Home route - serve the main index.html
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'components', 'index.html'))
-})
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "components", "index.html"));
+});
 
 // Notes route
-app.get('/notes', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'components', 'notes', 'index.html'))
-})
+app.get("/notes", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "components", "notes", "index.html"));
+});
 
 // Projects route
-app.get('/projects', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'components', 'projects', 'index.html'))
-})
+app.get("/projects", (req, res) => {
+  res.sendFile(
+    path.join(__dirname, "..", "components", "projects", "index.html")
+  );
+});
 
 // Work route
-app.get('/work', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'components', 'work', 'index.html'))
-})
+app.get("/work", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "components", "work", "index.html"));
+});
 
 // Hello route
-app.get('/hello', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'components', 'hello', 'index.html'))
-})
+app.get("/hello", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "components", "hello", "index.html"));
+});
 
 // Side quests route
-app.get('/side-quests', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'components', 'side-quests', 'index.html'))
-})
+app.get("/side-quests", (req, res) => {
+  res.sendFile(
+    path.join(__dirname, "..", "components", "side-quests", "index.html")
+  );
+});
 
 // About route (existing)
-app.get('/about', function (req, res) {
-  res.sendFile(path.join(__dirname, '..', 'components', 'about.htm'))
-})
+app.get("/about", function (req, res) {
+  res.sendFile(path.join(__dirname, "..", "components", "about.htm"));
+});
 
 // 404 error handler - serve custom 404 page
-app.get('*', (req, res) => {
-  res.status(404).sendFile(path.join(__dirname, '..', 'components', '404.html'))
-})
+app.get("*", (req, res) => {
+  res
+    .status(404)
+    .sendFile(path.join(__dirname, "..", "components", "404.html"));
+});
 
 // Example API endpoint - JSON
-app.get('/api-data', (req, res) => {
+app.get("/api-data", (req, res) => {
   res.json({
-    message: 'Here is some sample API data',
-    items: ['apple', 'banana', 'cherry'],
-  })
-})
+    message: "Here is some sample API data",
+    items: ["apple", "banana", "cherry"],
+  });
+});
 
 // Health check
-app.get('/healthz', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() })
-})
+app.get("/healthz", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 app.listen(3001, () => {
   console.log('HeySuri server is running on http://localhost:3001')
 })
 
-module.exports = app
+module.exports = app;

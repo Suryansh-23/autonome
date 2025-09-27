@@ -415,6 +415,41 @@ const SETTINGS_SCHEMA = {
           { value: 'base', label: 'Base (Mainnet)' },
         ] as const,
       },
+      payments: {
+        type: 'object',
+        label: 'Payments',
+        category: 'Wallet',
+        requiresRestart: false,
+        default: {},
+        description: 'Paid fetch integration for x402-enabled endpoints.',
+        showInDialog: false,
+        properties: {
+          enabled: {
+            type: 'boolean',
+            label: 'Enable Paid Fetch (x402)',
+            category: 'Wallet',
+            requiresRestart: false,
+            default: false,
+            description:
+              'Route fallback fetches via x402 with your connected wallet to pay for access.',
+            showInDialog: true,
+          },
+          chain: {
+            type: 'enum',
+            label: 'Payments Chain',
+            category: 'Wallet',
+            requiresRestart: false,
+            default: undefined as string | undefined,
+            description:
+              'Chain to use for payments. If unset, falls back to Wallet Chain.',
+            showInDialog: true,
+            options: [
+              { value: 'base-sepolia', label: 'Base Sepolia (Testnet)' },
+              { value: 'base', label: 'Base (Mainnet)' },
+            ] as const,
+          },
+        },
+      },
     },
   },
 

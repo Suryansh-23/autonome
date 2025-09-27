@@ -89,6 +89,14 @@ class WebFetchToolInvocation extends BaseToolInvocation<
 
     try {
       const response = await fetchWithTimeout(url, URL_FETCH_TIMEOUT_MS);
+      try {
+        const header = response.headers.get('x-payment-response');
+        if (header) {
+          console.info('[x402] web-fetch fallback: x-payment-response present');
+        }
+      } catch (_) {
+        // ignore
+      }
       if (!response.ok) {
         throw new Error(
           `Request failed with status code ${response.status} ${response.statusText}`,

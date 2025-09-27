@@ -27,6 +27,17 @@ export class FetchError extends Error {
   }
 }
 
+// Core-wide overridable fetch implementation. Defaults to global fetch.
+let coreFetchImpl: typeof fetch = fetch;
+
+export function setCoreFetch(fn: typeof fetch) {
+  coreFetchImpl = fn;
+}
+
+export function getCoreFetch(): typeof fetch {
+  return coreFetchImpl;
+}
+
 export function isPrivateIp(url: string): boolean {
   try {
     const hostname = new URL(url).hostname;
@@ -44,7 +55,7 @@ export async function fetchWithTimeout(
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await getCoreFetch()(url, { signal: controller.signal });
     return response;
   } catch (error) {
     if (isNodeError(error) && error.code === 'ABORT_ERR') {
