@@ -1,0 +1,8 @@
+{
+    "name": "heysuri",
+    "short_name": "heysuri",
+    "icons": [],
+    "theme_color": "#ffffff",
+    "background_color": "#ffffff",
+    "display": "standalone"
+}

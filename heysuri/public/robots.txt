@@ -1,0 +1,5 @@
+
+User-agent: *
+Allow: /
+
+Sitemap: https://ipfs.io/ipns/k51qzi5uqu5dlq5t1j65qpm1wxojwdvrqxgk1jm3b230wvwd2ad6y6mankn20s/sitemap-index.xml

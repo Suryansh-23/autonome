@@ -1,0 +1,93 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="HandheldFriendly" content="True"><meta name="format-detection" content="telephone=no"><meta name="referrer" content="no-referrer-when-downgrade"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"><meta name="generator" content="Astro v5.12.8"><meta name="theme-color" content="#fff" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#000" media="(prefers-color-scheme: dark)"><link rel="sitemap" href="/sitemap-index.xml"><link rel="manifest" href="../site.webmanifest"><link rel="alternate" type="application/rss+xml" title="Suri" href="https://ipfs.io/ipns/k51qzi5uqu5dlq5t1j65qpm1wxojwdvrqxgk1jm3b230wvwd2ad6y6mankn20s/rss.xml"><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.DZnDNxNb.js"></script><title>Projects</title><meta name="description" content="Web3 Full-Stack Developer building DeFi simulators, blockchain data infra, and intent-based dApps."><link rel="canonical" href="https://example.com"><meta property="og:title" content="Projects"><meta property="og:description" content="Web3 Full-Stack Developer building DeFi simulators, blockchain data infra, and intent-based dApps."><meta property="og:image" content="https://ipfs.io/ipns/k51qzi5uqu5dlq5t1j65qpm1wxojwdvrqxgk1jm3b230wvwd2ad6y6mankn20s/og.jpg"><meta property="og:image:alt" content="Projects"><meta property="og:type" content="website"><meta property="og:locale" content="en-IN"><meta name="twitter:title" content="Projects"><meta name="twitter:description" content="Web3 Full-Stack Developer building DeFi simulators, blockchain data infra, and intent-based dApps."><meta name="twitter:image" content="https://ipfs.io/ipns/k51qzi5uqu5dlq5t1j65qpm1wxojwdvrqxgk1jm3b230wvwd2ad6y6mankn20s/og.jpg"><meta name="twitter:image:alt" content="Projects"><meta name="twitter:card" content="summary_large_image"><link rel="stylesheet" href="../index.Boqik_v9.css">
+<script>
+(function() {
+  // Detect if we're on IPFS and get the root path
+  function getIPFSRoot() {
+    var path = window.location.pathname;
+    
+    // Check for IPFS patterns: /ipfs/hash/ or /ipns/hash/
+    var ipfsMatch = path.match(/^\/(ipfs|ipns)\/([^\/]+)/);
+    if (ipfsMatch) {
+      return '/' + ipfsMatch[1] + '/' + ipfsMatch[2] + '/';
+    }
+    
+    return '/';
+  }
+  
+  // Fix navigation links on page load (assets are now fixed at build time)
+  function fixNavigationLinks() {
+    var root = getIPFSRoot();
+    
+    if (root !== '/') {
+      // Fix internal navigation links (routes like /notes, /projects, etc.)
+      var navLinks = document.querySelectorAll('a[href]');
+      navLinks.forEach(function(link) {
+        var href = link.getAttribute('href');
+        
+        // Skip if already processed, external links, or special links
+        if (!href || 
+            href.indexOf('http') === 0 || 
+            href.indexOf('mailto:') === 0 || 
+            href.indexOf('tel:') === 0 || 
+            href.indexOf('#') === 0 || 
+            href.indexOf('javascript:') === 0 ||
+            href.indexOf(root) === 0) {
+          return;
+        }
+        
+        // Check if it's an internal route (starts with /)
+        if (href.indexOf('/') === 0) {
+          // Internal routes that should be prefixed with IPFS root
+          var isInternalRoute = 
+            href === '/' ||
+            href.indexOf('/notes') === 0 ||
+            href.indexOf('/projects') === 0 ||
+            href.indexOf('/work') === 0 ||
+            href.indexOf('/hello') === 0 ||
+            href.indexOf('/side-quests') === 0 ||
+            href.indexOf('/sitemap') === 0 ||
+            href.indexOf('/rss.xml') === 0 ||
+            href.indexOf('/robots.txt') === 0 ||
+            href.indexOf('/site.webmanifest') === 0;
+            
+          if (isInternalRoute) {
+            // Prefix with IPFS root, handling root path specially  
+            var newHref = href === '/' ? root : root + href.substring(1);
+            link.setAttribute('href', newHref);
+          }
+        }
+      });
+    }
+  }
+  
+  // Run on DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fixNavigationLinks);
+  } else {
+    fixNavigationLinks();
+  }
+})();
+</script>
+</head><body class="bg-bg dark:bg-dark-bg"> <header class="mx-auto flex max-w-screen-sm flex-wrap items-center justify-between p-3 pb-8 font-sans sm:p-6"> <a href="/" class="text-lg font-semibold text-black sm:text-xl dark:text-white">Suri</a> <nav> <ul class="flex list-none items-center gap-2 p-0 sm:gap-3"> <li> <a href="../notes" class="prose"> Notes </a> </li><li> <a href="../projects" class="prose"> Projects </a> </li><li> <a href="../work" class="prose"> Work </a> </li><li> <a href="../hello" class="prose"> Say hello </a> </li><li> <a href="/side-quests" class="prose"> Side quests </a> </li> </ul> </nav> </header> <div class="mx-auto max-w-screen-sm p-3 font-sans sm:p-6"> <main class="min-h-[80vh]">   <section class="py-3"> <h2 class="text-muted-text dark:text-dark-muted-text mb-3 text-lg font-bold">
+Projects
+</h2> <div class="grid list-none gap-4 p-0"> <div> <li class="flex items-center gap-1.5"> <a href="https://github.com/Suryansh-23/degenOS" class="link"> degenOS </a> <svg class="text-muted-text dark:text-dark-muted-text size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M10 6v2H5v11h11v-5h2v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm11-3v8h-2V6.413l-7.793 7.794l-1.414-1.414L17.585 5H13V3z"></path></svg> </li> <p class="prose m-0 text-sm opacity-90">Decentralized operating system leveraging Cartesi Rollups and Avail DA to enable seamless, trustless Web3 applications with secure off‑chain computation.</p> </div><div> <li class="flex items-center gap-1.5"> <a href="https://github.com/Suryansh-23/liquidity-oracle" class="link"> Liquidity Oracle </a> <svg class="text-muted-text dark:text-dark-muted-text size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M10 6v2H5v11h11v-5h2v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm11-3v8h-2V6.413l-7.793 7.794l-1.414-1.414L17.585 5H13V3z"></path></svg> </li> <p class="prose m-0 text-sm opacity-90">Uniswap v4 Hooks + EigenLayer AVS oracle providing spread, depth, HHI, and liquidity forecasts; Rust/TypeScript indexer and React dashboard.</p> </div><div> <li class="flex items-center gap-1.5"> <a href="https://github.com/Suryansh-23/intendo-64" class="link"> Intendo‑64 </a> <svg class="text-muted-text dark:text-dark-muted-text size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M10 6v2H5v11h11v-5h2v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm11-3v8h-2V6.413l-7.793 7.794l-1.414-1.414L17.585 5H13V3z"></path></svg> </li> <p class="prose m-0 text-sm opacity-90">Retro‑themed DeFi app executing natural‑language intents for Uniswap/Aave/ERC‑20 with real‑time on‑chain verification; Cartesi co‑processor for NLP parsing.</p> </div><div> <li class="flex items-center gap-1.5"> <a href="https://github.com/Suryansh-23/augmentium" class="link"> Augmentium </a> <svg class="text-muted-text dark:text-dark-muted-text size-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M10 6v2H5v11h11v-5h2v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm11-3v8h-2V6.413l-7.793 7.794l-1.414-1.414L17.585 5H13V3z"></path></svg> </li> <p class="prose m-0 text-sm opacity-90">Decentralized stablecoin pegged 1:1 to gold on a Cosmos‑SDK chain; CW‑20 token on Mantrachain with robust tokenomics and collateralization.</p> </div> </div> <h2 class="text-muted-text dark:text-dark-muted-text mt-6 mb-3 text-lg font-bold">
+Toolbox
+</h2> <div class="grid gap-4 sm:grid-cols-2"> <div class="prose"> <h3 class="m-0 text-base">Languages</h3> <p class="m-0 text-sm opacity-90">JS/TS, Solidity, Go, Rust, Python</p> </div> <div class="prose"> <h3 class="m-0 text-base">Frontend</h3> <p class="m-0 text-sm opacity-90">React, Next.js, Tailwind CSS</p> </div> <div class="prose"> <h3 class="m-0 text-base">Smart contracts & Web3</h3> <p class="m-0 text-sm opacity-90">Viem, Ethers, Chainlink, EigenLayer</p> </div> <div class="prose"> <h3 class="m-0 text-base">Data & infra</h3> <p class="m-0 text-sm opacity-90">TheGraph/Substreams, RabbitMQ</p> </div> </div> </section>  </main> <footer class="mx-auto flex w-full flex-col items-start gap-6 pt-16 pb-24 sm:flex-row sm:items-center sm:justify-between sm:gap-8"> <div id="theme-toggle" class="relative z-0 inline-grid grid-cols-3 gap-0.5 bg-neutral-950/5 p-0.75 text-neutral-950 dark:bg-white/10 dark:text-white" data-astro-cid-x3pjskd3> <button aria-label="System theme" data-theme="system" class="theme-button p-1.5 sm:p-0" data-astro-cid-x3pjskd3> <svg viewBox="0 0 28 28" fill="none" class="size-7" data-astro-cid-x3pjskd3> <path d="M7.5 8.5C7.5 7.94772 7.94772 7.5 8.5 7.5H19.5C20.0523 7.5 20.5 7.94772 20.5 8.5V16.5C20.5 17.0523 20.0523 17.5 19.5 17.5H8.5C7.94772 17.5 7.5 17.0523 7.5 16.5V8.5Z" stroke="currentColor" data-astro-cid-x3pjskd3></path> <path d="M7.5 8.5C7.5 7.94772 7.94772 7.5 8.5 7.5H19.5C20.0523 7.5 20.5 7.94772 20.5 8.5V14.5C20.5 15.0523 20.0523 15.5 19.5 15.5H8.5C7.94772 15.5 7.5 15.0523 7.5 14.5V8.5Z" stroke="currentColor" data-astro-cid-x3pjskd3></path> <path d="M16.5 20.5V17.5H11.5V20.5M16.5 20.5H11.5M16.5 20.5H17.5M11.5 20.5H10.5" stroke="currentColor" stroke-linecap="round" data-astro-cid-x3pjskd3></path> </svg> </button> <button aria-label="Light theme" data-theme="light" class="theme-button p-1.5 sm:p-0" data-astro-cid-x3pjskd3> <svg viewBox="0 0 28 28" fill="none" class="size-7" data-astro-cid-x3pjskd3> <circle cx="14" cy="14" r="3.5" stroke="currentColor" data-astro-cid-x3pjskd3></circle> <path d="M14 8.5V6.5" stroke="currentColor" stroke-linecap="round" data-astro-cid-x3pjskd3></path> <path d="M17.889 10.1115L19.3032 8.69727" stroke="currentColor" stroke-linecap="round" data-astro-cid-x3pjskd3></path> <path d="M19.5 14L21.5 14" stroke="currentColor" stroke-linecap="round" data-astro-cid-x3pjskd3></path> <path d="M17.889 17.8885L19.3032 19.3027" stroke="currentColor" stroke-linecap="round" data-astro-cid-x3pjskd3></path> <path d="M14 21.5V19.5" stroke="currentColor" stroke-linecap="round" data-astro-cid-x3pjskd3></path> <path d="M8.69663 19.3029L10.1108 17.8887" stroke="currentColor" stroke-linecap="round" data-astro-cid-x3pjskd3></path> <path d="M6.5 14L8.5 14" stroke="currentColor" stroke-linecap="round" data-astro-cid-x3pjskd3></path> <path d="M8.69663 8.69711L10.1108 10.1113" stroke="currentColor" stroke-linecap="round" data-astro-cid-x3pjskd3></path> </svg> </button> <button aria-label="Dark theme" data-theme="dark" class="theme-button p-1.5 sm:p-0" data-astro-cid-x3pjskd3> <svg viewBox="0 0 28 28" fill="none" class="size-7" data-astro-cid-x3pjskd3> <path d="M10.5 9.99914C10.5 14.1413 13.8579 17.4991 18 17.4991C19.0332 17.4991 20.0176 17.2902 20.9132 16.9123C19.7761 19.6075 17.109 21.4991 14 21.4991C9.85786 21.4991 6.5 18.1413 6.5 13.9991C6.5 10.8902 8.39167 8.22304 11.0868 7.08594C10.7089 7.98159 10.5 8.96597 10.5 9.99914Z" stroke="currentColor" stroke-linejoin="round" data-astro-cid-x3pjskd3></path> </svg> </button> </div>  <script data-astro-rerun>
+  (function () {
+    // Default to light when no preference is saved
+    const theme = localStorage.getItem("currentTheme") || "light";
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
+
+    const isDark = theme === "dark" || (theme === "system" && prefersDark);
+
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+    } else {
+      document.documentElement.classList.add("light");
+      document.documentElement.classList.remove("dark");
+    }
+  })();
+</script> <script type="module">function d(){return localStorage.getItem("currentTheme")??"light"}function r(e){e!==null?localStorage.setItem("currentTheme",e):localStorage.removeItem("currentTheme"),c(e)}function c(e){e==="dark"||e==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches?(document.documentElement.classList.add("dark"),document.documentElement.classList.remove("light")):(document.documentElement.classList.add("light"),document.documentElement.classList.remove("dark")),window._updateTheme?.(e)}function n(){const e=document.querySelectorAll(".theme-button"),a=d();e.forEach(t=>{t.getAttribute("data-theme")===a&&t.classList.add("active"),t.addEventListener("click",()=>{const s=t.getAttribute("data-theme");e.forEach(o=>o.classList.remove("active")),t.classList.add("active"),r(s)})}),c(a),window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{d()==="system"&&c("system")})}document.addEventListener("DOMContentLoaded",n);document.addEventListener("astro:page-load",n);(document.readyState==="interactive"||document.readyState==="complete")&&n();</script> <div class="prose mt-2"> <span class="block">© 2025 Suri</span> <span class="block text-sm opacity-80">Last updated Sep 17, 2025</span> </div> </footer> </div> </body></html>
