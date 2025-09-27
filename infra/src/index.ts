@@ -14,9 +14,16 @@ import {
     ConnectedClient, 
     SupportedPaymentKind } from "x402/types"
 import { verify, settle } from "x402/facilitator"
+import { privateKeyToAccount } from "viem/accounts";
+import { createWalletClient, http, SendTransactionParameters } from "viem";
+import { baseSepolia, polygon } from "viem/chains";
 
 const EVM_PRIVATE_KEY = process.env.EVM_PRIVATE_KEY || ""
 const EVM_ADDRESS = process.env.EVM_ADDRESS || ""
+const chainIdToChain = { 
+  84532: baseSepolia,
+  137: polygon,
+}
 
 if (!EVM_PRIVATE_KEY || !EVM_ADDRESS) {
     console.error("Missing required environment variables")
@@ -114,6 +121,30 @@ app.post("/settle", async (req: Request, res: Response) => {
   }
 });
 
+app.post("paymaster", async (req: Request, res: Response) => {
+  
+  const { to, data, chainId }= req.body
+  const walletClient = createWalletClient({
+    account: privateKeyToAccount(EVM_PRIVATE_KEY as `0x${string}`),
+    transport: http()
+  })
+
+  try {
+    const txnPayload: SendTransactionParameters = {
+      account: EVM_ADDRESS as `0x${string}`,
+      to: to as `0x${string}`,
+      data: data as `0x${string}`, 
+      chain: chainIdToChain[chainId as keyof typeof chainIdToChain], 
+    }
+    const hash = await walletClient.sendTransaction(txnPayload);
+    console.log(`[infra server] transaction sent, hash: ${hash}`);
+    res.status(200).json({ hash });
+  } catch (e) {
+    res.status(500).json({ error: `Transaction failed: ${e}` });
+  }
+})
+
+/*
 // Endpoints for Porto Merchant Server
 const porto = Router({ basePath: "/porto" }).route(
   "/merchant",
@@ -124,6 +155,7 @@ const porto = Router({ basePath: "/porto" }).route(
   })
 );
 app.use(porto.listener);
+*/
 
 app.listen(process.env.PORT, () => {
   console.log(`Infra server (facilitator + porto merchant) running on port ${process.env.PORT}`);

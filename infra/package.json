@@ -11,8 +11,9 @@
     "dotenv": "^17.1.0",
     "express": "^5.1.0",
     "porto": "latest",
-    "x402": "../sdk/x402/src",
-    "tsx": "^4.20.5"
+    "tsx": "^4.20.5",
+    "viem": "^2.37.8",
+    "x402": "../sdk/x402/src"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
