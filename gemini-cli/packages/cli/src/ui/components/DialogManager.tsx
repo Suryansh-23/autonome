@@ -7,6 +7,7 @@
 import { Box, Text } from 'ink';
 import { IdeIntegrationNudge } from '../IdeIntegrationNudge.js';
 import { FolderTrustDialog } from './FolderTrustDialog.js';
+import { BudgetDialog } from './BudgetDialog.js';
 import { ShellConfirmationDialog } from './ShellConfirmationDialog.js';
 import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
 import { ThemeDialog } from './ThemeDialog.js';
@@ -42,6 +43,18 @@ export const DialogManager = () => {
           apply the changes.
         </Text>
       </Box>
+    );
+  }
+  if (uiState.isBudgetDialogOpen && uiState.budgetPrompt) {
+    return (
+      <BudgetDialog
+        prompt={uiState.budgetPrompt}
+        currentBudget={
+          settings.merged.wallet?.payments?.maxUsdBudget ?? undefined
+        }
+        onSelect={uiActions.handleBudgetSelect}
+        onClose={uiActions.closeBudgetDialog}
+      />
     );
   }
   if (uiState.showWorkspaceMigrationDialog) {

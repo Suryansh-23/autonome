@@ -15,20 +15,22 @@ if (!payTo || !facilitatorURL) {
   process.exit(1);
 }
 
-app.use(express.json())
-app.use((req, res, next) => setHeaderMiddleware(payTo, res, next))
-app.use(middleware(
-  payTo,
-  {
-    '/*': { price: '$0.01', network: 'base-sepolia' }
-  },
-  { 
-    url: facilitatorURL
-  },
-  undefined, 
-  undefined,
-  undefined,
-))
+app.use(express.json());
+app.use((req, res, next) => setHeaderMiddleware(payTo, res, next));
+app.use(
+  middleware(
+    payTo,
+    {
+      "/*": { price: "$0.01", network: "base-sepolia" },
+    },
+    {
+      url: facilitatorURL,
+    },
+    undefined,
+    undefined,
+    undefined
+  )
+);
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, "..", "public")));
@@ -79,8 +81,10 @@ app.get("*", (req, res) => {
     .sendFile(path.join(__dirname, "..", "components", "404.html"));
 });
 
-app.listen(5001, () => {
-  console.log('HeySuri server is running on http://localhost:5001')
-})
+app.listen(process.env.PORT || 5000, () => {
+  console.log(
+    `HeySuri server is running on http://localhost:${process.env.PORT || 5000}`
+  );
+});
 
 module.exports = app;

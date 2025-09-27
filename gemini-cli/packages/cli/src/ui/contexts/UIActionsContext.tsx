@@ -11,6 +11,7 @@ import { type FolderTrustChoice } from '../components/FolderTrustDialog.js';
 import { type AuthType, type EditorType } from '@google/gemini-cli-core';
 import { type SettingScope } from '../../config/settings.js';
 import type { AuthState } from '../types.js';
+import type { BudgetPromptState } from '../../wallet/porto.js';
 
 export interface UIActions {
   handleThemeSelect: (
@@ -43,6 +44,9 @@ export interface UIActions {
   onWorkspaceMigrationDialogOpen: () => void;
   onWorkspaceMigrationDialogClose: () => void;
   handleProQuotaChoice: (choice: 'auth' | 'continue') => void;
+  openBudgetDialog: (prompt: BudgetPromptState) => void;
+  closeBudgetDialog: () => void;
+  handleBudgetSelect: (budget: number) => void;
 }
 
 export const UIActionsContext = createContext<UIActions | null>(null);

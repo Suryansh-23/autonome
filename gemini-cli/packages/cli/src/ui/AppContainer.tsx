@@ -75,7 +75,14 @@ import { useAutoAcceptIndicator } from './hooks/useAutoAcceptIndicator.js';
 import { useWorkspaceMigration } from './hooks/useWorkspaceMigration.js';
 import { useSessionStats } from './contexts/SessionContext.js';
 import { useGitBranchName } from './hooks/useGitBranchName.js';
-import { readStoredWalletIdentity } from '../wallet/porto.js';
+import {
+  readStoredWalletIdentity,
+  getPendingBudgetPrompt,
+  clearPendingBudgetPrompt,
+  type BudgetPromptState,
+  applySessionBudgetSelection,
+  setSessionBudgetLimitUSDC,
+} from '../wallet/porto.js';
 
 const CTRL_EXIT_PROMPT_DURATION_MS = 1000;
 
@@ -138,6 +145,11 @@ export const AppContainer = (props: AppContainerProps) => {
 
   const [isConfigInitialized, setConfigInitialized] = useState(false);
 
+  const [budgetPrompt, setBudgetPrompt] =
+    useState<BudgetPromptState | null>(null);
+  const [isBudgetDialogOpen, setBudgetDialogOpen] = useState(false);
+  const paymentsEnabled = Boolean(settings.merged.wallet?.payments?.enabled);
+
   // Auto-accept indicator
   const showAutoAcceptIndicator = useAutoAcceptIndicator({
     config,
@@ -171,12 +183,12 @@ export const AppContainer = (props: AppContainerProps) => {
       try {
         const identity = readStoredWalletIdentity();
         if (identity?.address) {
-          historyManager.addItem(
-            {
-              type: MessageType.INFO,
-              text: `Wallet connected (Porto): ${identity.address}`,
-            },
-            Date.now(),
+      historyManager.addItem(
+        {
+          type: MessageType.INFO,
+          text: `Wallet connected (Porto): ${identity.address}`,
+        },
+        Date.now(),
           );
         }
       } catch (e) {
@@ -184,17 +196,40 @@ export const AppContainer = (props: AppContainerProps) => {
           console.error('Failed to read wallet identity:', e);
         }
       }
+
+      const pendingBudget = getPendingBudgetPrompt();
+      if (pendingBudget && paymentsEnabled) {
+        setBudgetPrompt(pendingBudget);
+        setBudgetDialogOpen(true);
+        clearPendingBudgetPrompt();
+      }
     })();
     registerCleanup(async () => {
       const ideClient = await IdeClient.getInstance();
       await ideClient.disconnect();
     });
-  }, [config]);
+  }, [config, paymentsEnabled, historyManager.addItem]);
 
   useEffect(
     () => setUpdateHandler(historyManager.addItem, setUpdateInfo),
     [historyManager.addItem],
   );
+
+  useEffect(() => {
+    const handler = (payload: BudgetPromptState) => {
+      if (!paymentsEnabled) {
+        clearPendingBudgetPrompt();
+        return;
+      }
+      setBudgetPrompt(payload);
+      setBudgetDialogOpen(true);
+      clearPendingBudgetPrompt();
+    };
+    appEvents.on(AppEvent.ShowBudgetDialog, handler);
+    return () => {
+      appEvents.off(AppEvent.ShowBudgetDialog, handler);
+    };
+  }, [paymentsEnabled]);
 
   // Watch for model changes (e.g., from Flash fallback)
   useEffect(() => {
@@ -757,6 +792,89 @@ Logging in with Google... Please restart Gemini CLI to continue.
     setShowEscapePrompt(showPrompt);
   }, []);
 
+  const openBudgetDialog = useCallback((prompt: BudgetPromptState) => {
+    setBudgetPrompt(prompt);
+    setBudgetDialogOpen(true);
+  }, []);
+
+  const closeBudgetDialog = useCallback(() => {
+    setBudgetDialogOpen(false);
+    setBudgetPrompt(null);
+  }, []);
+
+  const handleBudgetSelect = useCallback(
+    (budget: number) => {
+      void (async () => {
+        console.info('[x402][ui] budget selection started', { budget });
+        setSessionBudgetLimitUSDC(budget);
+        settings.setValue(
+          SettingScope.User,
+          'wallet.payments.maxUsdBudget',
+          budget,
+        );
+
+        const decimals = budget >= 1 || Number.isInteger(budget) ? 2 : 4;
+        const formattedBudget = budget.toLocaleString('en-US', {
+          minimumFractionDigits: Number.isInteger(budget)
+            ? 0
+            : Math.min(decimals, 4),
+          maximumFractionDigits: Math.min(decimals, 4),
+        });
+
+        historyManager.addItem(
+          {
+            type: MessageType.INFO,
+            text:
+              budget === 0
+                ? 'x402 paid fetch disabled (budget set to 0 USDC).'
+                : `x402 session budget set to ${formattedBudget} USDC.`,
+          },
+          Date.now(),
+        );
+
+        historyManager.addItem(
+          {
+            type: MessageType.INFO,
+            text: 'Opening browser to grant wallet permissions for this session budget…',
+          },
+          Date.now(),
+        );
+
+        try {
+          await applySessionBudgetSelection(budget);
+          console.info('[x402][ui] budget applied successfully');
+          historyManager.addItem(
+            {
+              type: MessageType.INFO,
+              text:
+                'Budget applied. Follow the prompts in your browser, then return to Gemini CLI.',
+            },
+            Date.now(),
+          );
+        } catch (error) {
+          console.error('[x402][ui] budget application failed', error);
+          historyManager.addItem(
+            {
+              type: MessageType.ERROR,
+              text: `Failed to apply session budget: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            },
+            Date.now(),
+          );
+        } finally {
+          closeBudgetDialog();
+        }
+      })();
+    },
+    [
+      applySessionBudgetSelection,
+      closeBudgetDialog,
+      historyManager.addItem,
+      settings,
+    ],
+  );
+
   const handleIdePromptComplete = useCallback(
     (result: IdeIntegrationNudgeResult) => {
       if (result.userSelection === 'yes') {
@@ -918,6 +1036,7 @@ Logging in with Google... Please restart Gemini CLI to continue.
 
   const dialogsVisible = useMemo(
     () =>
+      isBudgetDialogOpen ||
       showWorkspaceMigrationDialog ||
       shouldShowIdePrompt ||
       isFolderTrustDialogOpen ||
@@ -931,6 +1050,7 @@ Logging in with Google... Please restart Gemini CLI to continue.
       showPrivacyNotice ||
       !!proQuotaRequest,
     [
+      isBudgetDialogOpen,
       showWorkspaceMigrationDialog,
       shouldShowIdePrompt,
       isFolderTrustDialogOpen,
@@ -1023,6 +1143,8 @@ Logging in with Google... Please restart Gemini CLI to continue.
       updateInfo,
       showIdeRestartPrompt,
       isRestarting,
+      isBudgetDialogOpen,
+      budgetPrompt,
     }),
     [
       historyManager.history,
@@ -1095,6 +1217,8 @@ Logging in with Google... Please restart Gemini CLI to continue.
       showIdeRestartPrompt,
       isRestarting,
       currentModel,
+      isBudgetDialogOpen,
+      budgetPrompt,
     ],
   );
 
@@ -1121,6 +1245,9 @@ Logging in with Google... Please restart Gemini CLI to continue.
       onWorkspaceMigrationDialogOpen,
       onWorkspaceMigrationDialogClose,
       handleProQuotaChoice,
+      openBudgetDialog,
+      closeBudgetDialog,
+      handleBudgetSelect,
     }),
     [
       handleThemeSelect,
@@ -1143,6 +1270,9 @@ Logging in with Google... Please restart Gemini CLI to continue.
       onWorkspaceMigrationDialogOpen,
       onWorkspaceMigrationDialogClose,
       handleProQuotaChoice,
+      openBudgetDialog,
+      closeBudgetDialog,
+      handleBudgetSelect,
     ],
   );
 

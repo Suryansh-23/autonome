@@ -13,6 +13,7 @@ import {
 import {
   clearStoredWalletIdentity,
   connectPortoWallet,
+  ensureSessionBudgetFundedUSDC,
   ensureWalletDialogOpen,
   getEphemeralWalletClient,
   readStoredWalletIdentity,
@@ -184,7 +185,11 @@ export const walletCommand: SlashCommand = {
         }
 
         const payCfg = context.services.settings.merged.wallet?.payments as
-          | { enabled?: boolean; chain?: 'base-sepolia' | 'base' }
+          | {
+              enabled?: boolean;
+              chain?: 'base-sepolia' | 'base';
+              maxUsdBudget?: number;
+            }
           | undefined;
         const chain = (payCfg?.chain ||
           context.services.settings.merged.wallet?.chain ||
@@ -197,6 +202,25 @@ export const walletCommand: SlashCommand = {
         ).getChainId?.();
         if (cid !== undefined) console.info('[x402] signer.getChainId():', cid);
 
+        const configuredBudget = payCfg?.maxUsdBudget;
+        const defaultBudget = 10;
+        const budgetToFund =
+          typeof configuredBudget === 'number'
+            ? Math.max(0, configuredBudget)
+            : defaultBudget;
+        let budgetEnsured = false;
+        const ensureBudgetOnce = async () => {
+          if (!budgetEnsured && budgetToFund > 0) {
+            console.info(
+              '[x402] ensuring session budget for pay-test:',
+              budgetToFund,
+              'USDC',
+            );
+            await ensureSessionBudgetFundedUSDC(budgetToFund);
+            budgetEnsured = true;
+          }
+        };
+
         await ensureWalletDialogOpen();
         console.info('[x402] pay-test initiating (wrapped):', url, 'on', chain);
 
@@ -204,9 +228,9 @@ export const walletCommand: SlashCommand = {
           ...(client as unknown as Signer),
           // @ts-ignore
           signTypedData: async (parameters: any): Promise<Hex> => {
-            console.info('[x402] signTypedData called:', parameters);
+            console.info('[x402] signTypedData called');
             const tmp = await client.signTypedData(parameters);
-            console.info('[x402] signTypedData result:', tmp);
+            // console.info('[x402] signTypedData result:', tmp);
             return tmp;
           },
         };
@@ -215,8 +239,12 @@ export const walletCommand: SlashCommand = {
           globalThis.fetch,
           proxySigner,
         );
+        const fundedFetch = (async (input: RequestInfo, init?: RequestInit) => {
+          await ensureBudgetOnce();
+          return fetchWithPayment(input, init);
+        }) as unknown as typeof fetch;
         console.info('[x402] wrapper created; sending request…');
-        const res: Response = await fetchWithPayment(url, { method: 'GET' });
+        const res: Response = await fundedFetch(url, { method: 'GET' });
         console.info('[x402] wrapped response status:', res.status);
 
         const header = res.headers.get('x-payment-response');

@@ -26,6 +26,7 @@ import type {
 import type { DOMElement } from 'ink';
 import type { SessionStatsState } from '../contexts/SessionContext.js';
 import type { UpdateObject } from '../utils/updateCheck.js';
+import type { BudgetPromptState } from '../../wallet/porto.js';
 
 export interface ProQuotaDialogRequest {
   failedModel: string;
@@ -106,6 +107,8 @@ export interface UIState {
   updateInfo: UpdateObject | null;
   showIdeRestartPrompt: boolean;
   isRestarting: boolean;
+  isBudgetDialogOpen: boolean;
+  budgetPrompt: BudgetPromptState | null;
 }
 
 export const UIStateContext = createContext<UIState | null>(null);

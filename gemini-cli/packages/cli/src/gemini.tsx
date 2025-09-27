@@ -119,8 +119,9 @@ async function relaunchWithAdditionalArgs(additionalArgs: string[]) {
 import { runZedIntegration } from './zed-integration/zedIntegration.js';
 import {
   maybeAutoConnectWallet,
-  getWalletClient,
   ensureWalletDialogOpen,
+  ensureSessionBudgetFundedUSDC,
+  getEphemeralWalletClient,
 } from './wallet/porto.js';
 import { setCoreFetch } from '@google/gemini-cli-core';
 import {
@@ -392,7 +393,6 @@ export async function main() {
       const chain = (payCfg.chain ||
         settings.merged.wallet?.chain ||
         'base-sepolia') as 'base-sepolia' | 'base';
-      const walletClient = await getWalletClient(chain);
       const selector = (reqs: any[]) => {
         try {
           console.info('[x402] available accepts:', JSON.stringify(reqs));
@@ -423,65 +423,52 @@ export async function main() {
         }
       };
 
-      const debugSigner = {
-        ...(walletClient as object),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-
-        async signTypedData(domain: any, types: any, message: any) {
-          try {
-            console.info(
-              '[x402] signTypedData.domain:',
-              JSON.stringify(domain),
-            );
-            console.info(
-              '[x402] signTypedData.message:',
-              JSON.stringify(message),
-            );
-          } catch {}
-          // @ts-ignore - call through to underlying signer
-          const tmp = await (client as any).signTypedData({
-            domain,
-            types,
-            message,
-          });
-          console.info('[x402] signTypedData result:', tmp);
-          return tmp;
-        },
-      } as Signer;
+      const configuredBudget = settings.merged.wallet?.payments?.maxUsdBudget;
+      const budget =
+        typeof configuredBudget === 'number' && configuredBudget >= 0
+          ? configuredBudget
+          : 10;
 
-      const maxValue = 10n * 10n ** 6n; // allow up to 10 USDC
-      const basePaidFetch = wrapFetchWithPayment(
-        globalThis.fetch,
-        debugSigner,
-        // walletClient,
-        maxValue,
-        selector as any,
-      );
-      const paidFetchWithDialog = (async (
-        input: RequestInfo | URL,
-        init?: RequestInit,
-      ) => {
-        await ensureWalletDialogOpen();
-        // @ts-ignore wrapper has fetch-compatible signature
-        const resp: Response = await basePaidFetch(input, init);
-        try {
-          const header = resp.headers.get('x-payment-response');
-          if (header) {
-            const decoded = decodeXPaymentResponse(header);
-            console.info(
-              '[x402] Payment response received:',
-              JSON.stringify(decoded),
-            );
-          } else {
-            console.info(
-              '[x402] No x-payment-response header present on response',
-            );
+      if (budget <= 0) {
+        console.info('[x402] Paid fetch disabled (budget set to 0 USDC).');
+      } else {
+        const signer = (await getEphemeralWalletClient()) as unknown as Signer;
+        const maxValue = BigInt(Math.round(budget * 1_000_000));
+        console.info('[x402] Max budget set to', budget, 'USDC.');
+        const basePaidFetch = wrapFetchWithPayment(
+          globalThis.fetch,
+          signer,
+          maxValue,
+          selector as any,
+        );
+        const paidFetchWithDialog = (async (
+          input: RequestInfo | URL,
+          init?: RequestInit,
+        ) => {
+          await ensureSessionBudgetFundedUSDC(budget);
+          await ensureWalletDialogOpen();
+          // @ts-ignore wrapper has fetch-compatible signature
+          const resp: Response = await basePaidFetch(input, init);
+          try {
+            const header = resp.headers.get('x-payment-response');
+            if (header) {
+              const decoded = decodeXPaymentResponse(header);
+              console.info(
+                '[x402] Payment response received:',
+                JSON.stringify(decoded),
+              );
+            } else {
+              console.info(
+                '[x402] No x-payment-response header present on response',
+              );
+            }
+          } catch (e) {
+            console.warn('[x402] Failed to decode x-payment-response header:', e);
           }
-        } catch (e) {
-          console.warn('[x402] Failed to decode x-payment-response header:', e);
-        }
-        return resp;
-      }) as unknown as typeof fetch;
-      setCoreFetch(paidFetchWithDialog);
+          return resp;
+        }) as unknown as typeof fetch;
+        setCoreFetch(paidFetchWithDialog);
+      }
     }
   } catch (e) {
     if (config.getDebugMode()) {

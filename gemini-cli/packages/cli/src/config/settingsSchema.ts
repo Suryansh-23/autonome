@@ -448,6 +448,16 @@ const SETTINGS_SCHEMA = {
               { value: 'base', label: 'Base (Mainnet)' },
             ] as const,
           },
+          maxUsdBudget: {
+            type: 'number',
+            label: 'Max Paid Fetch Budget (USDC)',
+            category: 'Wallet',
+            requiresRestart: false,
+            default: 10,
+            description:
+              'Maximum USDC spend allowed per x402 search request. Set to 0 to disable automatic payments.',
+            showInDialog: true,
+          },
         },
       },
     },
