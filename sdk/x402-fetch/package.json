@@ -2,8 +2,8 @@
   "name": "x402-fetch",
   "version": "0.6.0",
   "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/index.d.ts",
+  "module": "./dist/esm/index.mjs",
+  "types": "./dist/esm/index.d.mts",
   "scripts": {
     "start": "tsx --env-file=.env index.ts",
     "test": "vitest run",
@@ -40,7 +40,7 @@
   "dependencies": {
     "viem": "^2.21.26",
     "zod": "^3.24.2",
-    "x402": "../x402/src"
+    "x402": "file:../x402"
   },
   "exports": {
     ".": {

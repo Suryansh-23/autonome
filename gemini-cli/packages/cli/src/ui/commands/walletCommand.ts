@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 import open from 'open';
-import type { Hex } from 'viem';
+import { type Hex } from 'viem';
 import {
   decodeXPaymentResponse,
   wrapFetchWithPayment,
@@ -15,7 +15,7 @@ import {
   connectPortoWallet,
   ensureSessionBudgetFundedUSDC,
   ensureWalletDialogOpen,
-  getEphemeralWalletClient,
+  getEphemeralAccount,
   readStoredWalletIdentity,
   type WalletIdentityRecord,
 } from '../../wallet/porto.js';
@@ -194,11 +194,11 @@ export const walletCommand: SlashCommand = {
         const chain = (payCfg?.chain ||
           context.services.settings.merged.wallet?.chain ||
           'base-sepolia') as 'base-sepolia' | 'base';
-        const client = await getEphemeralWalletClient();
+        const account = await getEphemeralAccount();
         // Try to log chainId as an extra sanity check
 
         const cid = await (
-          client as unknown as { getChainId?: () => Promise<number> }
+          account as unknown as { getChainId?: () => Promise<number> }
         ).getChainId?.();
         if (cid !== undefined) console.info('[x402] signer.getChainId():', cid);
 
@@ -225,11 +225,12 @@ export const walletCommand: SlashCommand = {
         console.info('[x402] pay-test initiating (wrapped):', url, 'on', chain);
 
         const proxySigner: Signer = {
-          ...(client as unknown as Signer),
+          ...(account as unknown as Signer),
           // @ts-ignore
           signTypedData: async (parameters: any): Promise<Hex> => {
-            console.info('[x402] signTypedData called');
-            const tmp = await client.signTypedData(parameters);
+            // console.info('[x402] signTypedData called:', parameters);
+            const tmp = await account.signTypedData(parameters);
+
             // console.info('[x402] signTypedData result:', tmp);
             return tmp;
           },

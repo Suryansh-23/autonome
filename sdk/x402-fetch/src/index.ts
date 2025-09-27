@@ -8,7 +8,7 @@ import {
   isSvmSignerWallet,
   Network,
 } from "x402/types";
-import type { EvmSigner } from "x402/types/shared/evm";
+import type { EvmSigner } from "x402/types";
 import {
   createPaymentHeader,
   PaymentRequirementsSelector,
@@ -65,7 +65,6 @@ export function wrapFetchWithPayment(
       accepts: unknown[];
     };
     const parsedPaymentRequirements = accepts.map(x => PaymentRequirementsSchema.parse(x));
-
     const evmSigner = walletClient as EvmSigner;
     const network = isMultiNetworkSigner(walletClient)
       ? undefined
@@ -80,6 +79,9 @@ export function wrapFetchWithPayment(
       network,
       "exact",
     );
+    console.info("[x402] 402 Payment Required received:", {
+      requiredValue: selectedPaymentRequirements.maxAmountRequiredp,
+    });
 
     if (BigInt(selectedPaymentRequirements.maxAmountRequired) > maxValue) {
       throw new Error("Payment amount exceeds maximum allowed");

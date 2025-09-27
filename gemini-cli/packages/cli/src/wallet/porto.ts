@@ -6,6 +6,7 @@
 
 import type { Config } from '@google/gemini-cli-core';
 import { Storage } from '@google/gemini-cli-core';
+import { randomBytes } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import open from 'open';
@@ -14,17 +15,21 @@ import { base, baseSepolia } from 'porto/Chains';
 import { Dialog } from 'porto/cli';
 import { Account, WalletActions } from 'porto/viem';
 import {
+  createPublicClient,
   createWalletClient,
   custom,
   encodeFunctionData,
   http,
-  parseSignature,
+  parseErc6492Signature,
   publicActions,
+  toHex,
   type Abi,
   type Address,
-  type WalletActions as ViemWalletActions
+  type EncodeFunctionDataParameters,
+  type Hex,
+  type WalletActions as ViemWalletActions,
 } from 'viem';
-import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import { generatePrivateKey } from 'viem/accounts';
 import type { LoadedSettings } from '../config/settings.js';
 import { registerCleanup } from '../utils/cleanup.js';
 import { AppEvent, appEvents } from '../utils/events.js';
@@ -41,6 +46,7 @@ export interface WalletIdentityRecord {
 // Declare a typed cache on globalThis for the Porto wallet client
 declare global {
   var __GEMINI_PORTO: Porto.Porto | undefined;
+  var __GEMINI_EPHEMERAL_PORT: Porto.Porto | undefined;
   var __GEMINI_PORTO_EPHEMERAL_CLIENT:
     | (ReturnType<typeof createWalletClient> & ViemWalletActions)
     | undefined;
@@ -49,18 +55,15 @@ declare global {
   var __GEMINI_PORTO_SESSION: PortoSessionState | undefined;
 }
 
-type GrantedPermission = Awaited<
-  ReturnType<typeof WalletActions.grantPermissions>
->;
-
 interface PortoSessionState {
   chainSetting: WalletChainSetting;
   chainId: number;
   identity: WalletIdentityRecord;
-  account: ReturnType<typeof Account.from>;
-  ephemeralAccount: ReturnType<typeof privateKeyToAccount>;
-  permission?: GrantedPermission;
+  account: Address;
+  ephemeralPK: Hex;
+  ephemeralAccount: ReturnType<typeof Account.fromPrivateKey>;
   usdcAddress?: Address;
+  usdcVersion?: string;
   budgetLimit: bigint;
   fundedAmount: bigint;
   fundsTransferred: boolean;
@@ -134,6 +137,49 @@ const USDC_ABI = [
     stateMutability: 'nonpayable',
     type: 'function',
   },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'from',
+        type: 'address',
+      },
+      {
+        internalType: 'address',
+        name: 'to',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: 'value',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'validAfter',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'validBefore',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nonce',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'bytes',
+        name: 'signature',
+        type: 'bytes',
+      },
+    ],
+    name: 'transferWithAuthorization',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
 ] as const satisfies Abi;
 
 const USDC_DECIMALS = 1_000_000n;
@@ -149,11 +195,22 @@ const USDC_CONFIGS: Record<number, { address: Address; name: string }> = {
   },
 };
 
-const USDC_TRANSFER_SIGNATURE = 'transfer(address,uint256)' as const;
-const USDC_TRANSFER_FROM_SIGNATURE =
-  'transferFrom(address,address,uint256)' as const;
-const USDC_PERMIT_SIGNATURE =
-  'permit(address,address,uint256,uint256,uint256,uint8,bytes32,bytes32)' as const;
+const TRANSFER_WITH_AUTH_TYPES = {
+  TransferWithAuthorization: [
+    { name: 'from', type: 'address' },
+    { name: 'to', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'validAfter', type: 'uint256' },
+    { name: 'validBefore', type: 'uint256' },
+    { name: 'nonce', type: 'bytes32' },
+  ],
+} as const;
+
+// const USDC_TRANSFER_SIGNATURE = 'transfer(address,uint256)' as const;
+// const USDC_TRANSFER_FROM_SIGNATURE =
+//   'transferFrom(address,address,uint256)' as const;
+// const USDC_PERMIT_SIGNATURE =
+//   'permit(address,address,uint256,uint256,uint256,uint8,bytes32,bytes32)' as const;
 
 export function getPendingBudgetPrompt(): BudgetPromptState | undefined {
   return globalThis.__GEMINI_PORTO_BUDGET_PROMPT;
@@ -164,18 +221,133 @@ export function clearPendingBudgetPrompt(): void {
 }
 
 function createPublicClientForChain(chainSetting: WalletChainSetting) {
-  return createWalletClient({
+  return createPublicClient({
     chain: resolveChain(chainSetting),
     transport: http(),
-  }).extend(publicActions);
+  });
 }
 
 function createPortoWalletClient(session: PortoSessionState) {
-  return createWalletClient({
+  const tmp = createWalletClient({
     chain: resolveChain(session.chainSetting),
     account: session.account,
     transport: custom(globalThis.__GEMINI_PORTO!.provider),
-  });
+  }).extend(publicActions);
+  console.log('Created porto wallet client for account:', tmp.account.address);
+  return tmp;
+}
+
+function createNonce(): `0x${string}` {
+  return `0x${randomBytes(32).toString('hex')}` as `0x${string}`;
+}
+
+async function ensureUsdcVersion(
+  session: PortoSessionState,
+): Promise<string | undefined> {
+  if (!session.usdcAddress) return undefined;
+  if (!session.usdcVersion) {
+    try {
+      const client = createPublicClientForChain(session.chainSetting);
+      session.usdcVersion = (await client.readContract({
+        abi: USDC_ABI,
+        address: session.usdcAddress,
+        functionName: 'version',
+        args: [],
+      })) as string;
+    } catch (error) {
+      console.warn('[wallet][session] failed to fetch USDC version', error);
+    }
+  }
+  return session.usdcVersion;
+}
+
+async function buildTransferWithAuthorizationCall(
+  session: PortoSessionState,
+  params: {
+    from: Address;
+    to: Address;
+    value: bigint;
+    signer: 'identity' | 'ephemeral';
+  },
+): Promise<
+  Omit<
+    EncodeFunctionDataParameters<typeof USDC_ABI, 'transferWithAuthorization'>,
+    'abi' | 'functionName'
+  >
+> {
+  const usdcAddress = session.usdcAddress;
+  if (!usdcAddress) {
+    throw new Error('USDC address is not available for the current session.');
+  }
+  const config = getUsdcConfig(session.chainId);
+  if (!config) {
+    throw new Error(`No USDC config found for chain ${session.chainId}`);
+  }
+
+  const validAfter = 0n;
+  const validBefore = BigInt(Math.floor(Date.now() / 1000) + 4 * 3600);
+  const nonce = createNonce();
+  const version = (await ensureUsdcVersion(session)) ?? '2';
+
+  const domain = {
+    name: config.name,
+    version,
+    chainId: session.chainId,
+    verifyingContract: usdcAddress,
+  } as const;
+
+  const message = {
+    from: params.from,
+    to: params.to,
+    value: params.value,
+    validAfter,
+    validBefore,
+    nonce,
+  } as const;
+
+  let signature: Hex;
+  if (params.signer === 'identity') {
+    const walletClient = createPortoWalletClient(session);
+    ({ signature } = parseErc6492Signature(
+      await walletClient.signTypedData({
+        account: session.account,
+        domain,
+        types: TRANSFER_WITH_AUTH_TYPES,
+        primaryType: 'TransferWithAuthorization',
+        message,
+      }),
+    ));
+
+    const publicClient = createPublicClientForChain(session.chainSetting);
+    const isCorrect = await publicClient.verifyTypedData({
+      address: session.account,
+      domain,
+      types: TRANSFER_WITH_AUTH_TYPES,
+      primaryType: 'TransferWithAuthorization',
+      message,
+      signature,
+    });
+    console.log('Signature verification result:', isCorrect);
+  } else {
+    signature = await session.ephemeralAccount.signTypedData({
+      domain,
+      types: TRANSFER_WITH_AUTH_TYPES,
+      primaryType: 'TransferWithAuthorization',
+      message,
+    });
+  }
+
+  return {
+    args: [
+      params.from,
+      params.to,
+      params.value,
+      validAfter,
+      validBefore,
+      nonce,
+      signature,
+    ],
+  };
 }
 
 async function readUsdcBalance(
@@ -192,98 +364,167 @@ async function readUsdcBalance(
   })) as bigint;
 }
 
-type EncodedCall = {
-  to: Address;
-  data: `0x${string}`;
-};
-
-async function transferSessionBudget(
+async function submitReturnTransfer(
   session: PortoSessionState,
-  calls: EncodedCall[],
+  data: Omit<
+    EncodeFunctionDataParameters<typeof USDC_ABI, 'transferWithAuthorization'>,
+    'abi' | 'functionName'
+  >,
 ): Promise<void> {
-  if (calls.length === 0) return;
-  console.info('[wallet][session] executing call bundle', {
-    callCount: calls.length,
-    chainId: session.chainId,
-    account: session.identity.address,
-  });
-  const walletClient = createPortoWalletClient(session);
-  const { id } = await walletClient.sendCalls({
-    chain: resolveChain(session.chainSetting),
-    account: session.identity.address,
-    calls,
-  });
-
-  console.info('[wallet][session] call bundle sent', { id });
-}
-
-async function ensureBudgetInBase(requiredBudget: bigint): Promise<void> {
-  if (requiredBudget <= 0n) return;
-  const session = assertSessionState();
-  session.budgetLimit = requiredBudget;
-  if (!session.permission) {
-    console.info(
-      '[wallet][session] ensureBudgetInBase skipped - no permission yet',
-      {
-        requested: requiredBudget.toString(),
-      },
-    );
+  const usdcAddress = session.usdcAddress;
+  if (!usdcAddress) {
+    console.warn('[wallet][session] submitReturnTransfer skipped - no USDC address');
     return;
   }
-  const usdcConfig = session.usdcAddress
-    ? {
-        address: session.usdcAddress,
-        name: getUsdcConfig(session.chainId)?.name,
+
+  const paymasterPaymentUrl = getPaymasterPaymentUrl();
+  console.info('[wallet][session] attempting to use paymaster relay', {
+    paymasterPaymentUrl,
+    chainId: session.chainId,
+    account: session.ephemeralAccount.address,
+  });
+
+  if (paymasterPaymentUrl) {
+    try {
+      const response = await fetch(paymasterPaymentUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(
+          {
+            args: data.args,
+            chainId: session.chainId,
+          },
+          (_, v) => (typeof v === 'bigint' ? toHex(v) : v),
+        ),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(
+          `paymaster payment relay failed with status ${response.status}: ${errorText}`,
+        );
       }
-    : undefined;
-  if (!usdcConfig) {
-    console.warn(
-      '[wallet][session] ensureBudgetInBase skipped - missing USDC config',
-      {
+
+      const result = (await response.json().catch(() => undefined)) as
+        | { hash?: string }
+        | undefined;
+
+      console.info('[wallet][session] paymaster relay submitted', {
+        to: data.args[1],
+        hash: result?.hash,
+      });
+      console.log('[wallet][session] paymaster relay completed', {
         chainId: session.chainId,
-      },
-    );
+        account: session.ephemeralAccount.address,
+      });
+      return;
+    } catch (paymasterError) {
+      console.warn(
+        '[wallet][session] paymaster relay failed, falling back to porto',
+        paymasterError,
+      );
+    }
+  } else {
+    console.warn('[wallet][session] no paymaster payment URL configured');
+  }
+
+  if (!globalThis.__GEMINI_EPHEMERAL_PORT) {
+    throw new Error('Ephemeral Porto provider unavailable for fallback relay');
+  }
+
+  console.info('[wallet][session] executing return via porto fallback', {
+    chainId: session.chainId,
+    account: session.ephemeralAccount.address,
+  });
+
+  try {
+    const result = await globalThis.__GEMINI_EPHEMERAL_PORT.provider.request({
+      method: 'wallet_sendCalls',
+      params: [
+        {
+          calls: [
+            {
+              to: usdcAddress,
+              data: encodeFunctionData({
+                abi: USDC_ABI,
+                functionName: 'transferWithAuthorization',
+                args: data.args,
+              }),
+            },
+          ],
+        },
+      ],
+    });
+    console.log('[wallet][session] porto fallback relay result:', result);
+  } catch (error) {
+    console.error('[wallet][session] porto fallback relay failed', error);
+    throw error;
+  }
+}
+
+async function fundSessionBudget(
+  session: PortoSessionState,
+  requiredBudget: bigint,
+): Promise<void> {
+  if (requiredBudget <= 0n) return;
+
+  const usdcAddress = session.usdcAddress;
+  if (!usdcAddress) {
+    console.warn('[wallet][session] fundSessionBudget skipped - no USDC address', {
+      chainId: session.chainId,
+    });
     return;
   }
 
   const currentBalance = await readUsdcBalance(
     session.chainSetting,
-    usdcConfig.address,
+    usdcAddress,
     session.ephemeralAccount.address,
   );
+
   if (currentBalance >= requiredBudget) {
-    session.fundedAmount = currentBalance;
+    session.fundedAmount = requiredBudget;
+    session.fundsTransferred = true;
     return;
   }
 
   const delta = requiredBudget - currentBalance;
-  if (delta <= 0n) return;
+  if (delta <= 0n) {
+    session.fundedAmount = requiredBudget;
+    session.fundsTransferred = true;
+    return;
+  }
 
   console.info('[wallet][session] funding ephemeral account', {
     requested: requiredBudget.toString(),
     currentBalance: currentBalance.toString(),
     delta: delta.toString(),
   });
+
+  const walletClient = createPortoWalletClient(session);
   const transferData = encodeFunctionData({
     abi: USDC_ABI,
     functionName: 'transfer',
     args: [session.ephemeralAccount.address, delta],
   });
 
-  await transferSessionBudget(session, [
-    {
-      to: usdcConfig.address,
-      data: transferData,
-    },
-  ]);
+  const { id } = await walletClient.sendCalls({
+    chain: resolveChain(session.chainSetting),
+    account: session.identity.address,
+    calls: [
+      {
+        to: usdcAddress,
+        data: transferData,
+      },
+    ],
+  });
 
+  console.info('[wallet][session] USDC funding transaction sent', { id });
+  await walletClient.waitForCallsStatus({ id });
+  console.info('[wallet][session] USDC funding transaction confirmed', { id });
+
+  session.fundedAmount = requiredBudget;
   session.fundsTransferred = true;
-  const updatedBalance = await readUsdcBalance(
-    session.chainSetting,
-    usdcConfig.address,
-    session.ephemeralAccount.address,
-  );
-  session.fundedAmount = updatedBalance;
 }
 
 export function setSessionBudgetLimitUSDC(amount: number): void {
@@ -308,7 +549,6 @@ export async function applySessionBudgetSelection(
 
   if (amountBase <= 0n) {
     console.info('[wallet][session] clearing session budget (<= 0)');
-    session.permission = undefined;
     session.fundsTransferred = false;
     session.fundedAmount = 0n;
     return;
@@ -321,7 +561,6 @@ export async function applySessionBudgetSelection(
       }
     : undefined;
   if (!usdcConfig) {
-    session.permission = undefined;
     session.fundsTransferred = false;
     session.fundedAmount = 0n;
     console.warn('[wallet][session] missing USDC config when applying budget', {
@@ -329,117 +568,7 @@ export async function applySessionBudgetSelection(
     });
     return;
   }
-
-  await ensureWalletDialogOpen();
-
-  const permissionExpirySeconds = Math.floor(Date.now() / 1000) + 4 * 3600;
-
-  console.info('[wallet][session] requesting permission grant', {
-    expiry: permissionExpirySeconds,
-    spendLimit: amountBase.toString(),
-  });
-  const portoWalletClient = createPortoWalletClient(session);
-  console.info('[wallet][session] created Porto wallet client', {
-    chainId: portoWalletClient.chain?.id,
-    account: portoWalletClient.account?.address,
-    ephemeralAccount: session.ephemeralAccount.address,
-  });
-
-  console.log(
-    '[wallet][session] existing permission:',
-    await WalletActions.getPermissions(portoWalletClient),
-  );
-
-  // const permission = await globalThis.__GEMINI_PORTO?.provider.request({
-  //   method: 'wallet_grantPermissions',
-  //   params: [
-  //     {
-  //       expiry: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60, // 1 week
-  //       feeToken: {
-  //         limit: '1',
-  //         symbol: 'USDC',
-  //       },
-  //       key: {
-  //         publicKey: session.ephemeralAccount.address,
-  //         type: 'secp256k1',
-  //       },
-  //       permissions: {
-  //         calls: [
-  //           {
-  //             signature: 'transfer(address,uint256)',
-  //             to: usdcConfig.address,
-  //           },
-  //         ],
-  //         spend: [
-  //           {
-  //             limit: toHex(parseUnits('0.1', 6)), // 0.1 USDC
-  //             period: 'day',
-  //             token: usdcConfig.address,
-  //           },
-  //         ],
-  //       },
-  //     },
-  //   ],
-  // });
-
-  let permission;
-  try {
-    permission = await withUrlAutoOpen(() =>
-      WalletActions.grantPermissions(portoWalletClient, {
-        chainId: session.chainId,
-        expiry: permissionExpirySeconds,
-        feeToken: {
-          limit: '0.1',
-          symbol: 'USDC',
-        },
-        key: {
-          publicKey: session.ephemeralAccount.address,
-          type: 'address',
-        },
-        permissions: {
-          calls: [
-            {
-              signature: USDC_TRANSFER_SIGNATURE,
-              to: usdcConfig.address,
-            },
-            {
-              signature: USDC_TRANSFER_FROM_SIGNATURE,
-              to: usdcConfig.address,
-            },
-            {
-              signature: USDC_PERMIT_SIGNATURE,
-              to: usdcConfig.address,
-            },
-          ],
-          spend: [
-            {
-              limit: amountBase,
-              period: 'day',
-              token: usdcConfig.address,
-            },
-          ],
-          // signatureVerification: {
-          //   addresses: [session.ephemeralAccount.address],
-          // },
-        },
-      }),
-    );
-    console.log('Permission granted:', permission);
-  } catch (e) {
-    console.error('Permission grant failed:', e);
-    throw e;
-  }
-
-  session.permission = permission;
-
-  if (!session.cleanupRegistered) {
-    registerCleanup(returnSessionFunds);
-    session.cleanupRegistered = true;
-  }
-
-  console.info('[wallet][session] permission granted', {
-    permissionId: permission?.id!,
-  });
+  await fundSessionBudget(session, amountBase);
 }
 
 export async function ensureSessionBudgetFundedUSDC(
@@ -447,7 +576,10 @@ export async function ensureSessionBudgetFundedUSDC(
 ): Promise<void> {
   const required = toUsdcBase(amount);
   if (required <= 0n) return;
-  await ensureBudgetInBase(required);
+  const session = getSessionState();
+  if (!session) return;
+  session.budgetLimit = required;
+  await fundSessionBudget(session, required);
 }
 
 function queueBudgetPrompt(state: BudgetPromptState): void {
@@ -473,6 +605,23 @@ function assertSessionState(): PortoSessionState {
 
 function getUsdcConfig(chainId: number) {
   return USDC_CONFIGS[chainId];
+}
+
+function getPaymasterPaymentUrl(): string | undefined {
+  const base = process.env['PAYMASTER_URL'];
+  if (!base) return undefined;
+  try {
+    return new URL('/paymaster', base).toString();
+  } catch (error) {
+    console.warn(
+      '[wallet][session] invalid PAYMASTER_URL, skipping paymaster relay',
+      {
+        base,
+        error,
+      },
+    );
+    return undefined;
+  }
 }
 
 function toUsdcBase(amount: number): bigint {
@@ -559,25 +708,6 @@ function interceptStdoutForUrls(onUrl: (url: string) => void) {
   };
 }
 
-async function withUrlAutoOpen<T>(
-  operation: () => Promise<T>,
-  onOpenUrl?: (url: string) => void,
-): Promise<T> {
-  const restore = interceptStdoutForUrls(async (url) => {
-    try {
-      await open(url);
-      if (onOpenUrl) onOpenUrl(url);
-    } catch (error) {
-      console.error('Could not auto-open browser:', error);
-    }
-  });
-  try {
-    return await operation();
-  } finally {
-    restore();
-  }
-}
-
 export async function connectPortoWallet(
   effectiveChain: WalletChainSetting,
   onOpenUrl?: (url: string) => void,
@@ -588,6 +718,7 @@ export async function connectPortoWallet(
   const host = process.env['PORT']
     ? new URL(`/dialog`, `https://localhost:${process.env['PORT']}/`).toString()
     : undefined;
+
   const porto = Porto.create({
     chains: [chain],
     mode: Mode.dialog({
@@ -629,24 +760,36 @@ export async function connectPortoWallet(
     ts: Date.now(),
   };
 
-  globalThis.__GEMINI_PORTO = porto;
-  globalThis.__GEMINI_PORTO_IDENTITY = identity;
-
-  const account = Account.from(accounts[0]);
+  const account = accounts[0].address;
   const usdcConfig = getUsdcConfig(chain.id);
   const usdcAddress = usdcConfig?.address;
 
+  const ephemeralPorto = Porto.create({
+    chains: [chain],
+    mode: Mode.relay(),
+  });
+
   const ephemeralPK = generatePrivateKey();
-  const ephemeralAccount = privateKeyToAccount(ephemeralPK);
+  const ephemeralAccount = Account.fromPrivateKey(ephemeralPK);
+  const ephemeralClient = createWalletClient({
+    chain,
+    account: ephemeralAccount,
+    transport: custom(ephemeralPorto.provider),
+  }).extend(publicActions);
+
   console.log('Ephemeral address:', ephemeralAccount.address);
+
+  globalThis.__GEMINI_PORTO = porto;
+  globalThis.__GEMINI_EPHEMERAL_PORT = ephemeralPorto;
+  globalThis.__GEMINI_PORTO_IDENTITY = identity;
 
   const sessionState: PortoSessionState = {
     chainSetting: effectiveChain,
     chainId: chain.id,
     identity,
     account,
+    ephemeralPK,
     ephemeralAccount,
-    permission: undefined,
     usdcAddress,
     budgetLimit: 0n,
     fundedAmount: 0n,
@@ -696,12 +839,6 @@ export async function connectPortoWallet(
     sessionState.cleanupRegistered = true;
   }
 
-  const ephemeralClient = createWalletClient({
-    chain,
-    account: ephemeralAccount,
-    transport: http(),
-  }).extend(publicActions);
-
   globalThis.__GEMINI_PORTO_EPHEMERAL_CLIENT = ephemeralClient;
 
   Dialog.messenger.send('success', {
@@ -721,7 +858,7 @@ export async function connectPortoWallet(
 
 async function returnSessionFunds(): Promise<void> {
   const session = getSessionState();
-  if (!session || !session.fundsTransferred || !session.permission) return;
+  if (!session || !session.fundsTransferred) return;
   const usdcConfig = session.usdcAddress
     ? {
         address: session.usdcAddress,
@@ -745,84 +882,14 @@ async function returnSessionFunds(): Promise<void> {
       return;
     }
 
-    const publicClient = createPublicClientForChain(session.chainSetting);
-    const nonce = (await publicClient.readContract({
-      abi: USDC_ABI,
-      address: usdcConfig.address,
-      functionName: 'nonces',
-      args: [session.ephemeralAccount.address],
-    })) as bigint;
-
-    const version = (await publicClient.readContract({
-      abi: USDC_ABI,
-      address: usdcConfig.address,
-      functionName: 'version',
-      args: [],
-    })) as string;
-
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
-    const domain = {
-      name: usdcConfig.name ?? 'USDC',
-      version,
-      chainId: session.chainId,
-      verifyingContract: usdcConfig.address,
-    } as const;
-
-    const permitTypes = {
-      Permit: [
-        { name: 'owner', type: 'address' },
-        { name: 'spender', type: 'address' },
-        { name: 'value', type: 'uint256' },
-        { name: 'nonce', type: 'uint256' },
-        { name: 'deadline', type: 'uint256' },
-      ],
-    } as const;
-
-    const permitMessage = {
-      owner: session.ephemeralAccount.address,
-      spender: session.identity.address,
+    const transferCall = await buildTransferWithAuthorizationCall(session, {
+      from: session.ephemeralAccount.address,
+      to: session.identity.address,
       value: currentBalance,
-      nonce,
-      deadline,
-    } as const;
-
-    const permitSignature = await session.ephemeralAccount.signTypedData({
-      domain,
-      primaryType: 'Permit',
-      types: permitTypes,
-      message: permitMessage,
+      signer: 'ephemeral',
     });
 
-    const { r, s, v } = parseSignature(permitSignature);
-
-    const permitData = encodeFunctionData({
-      abi: USDC_ABI,
-      functionName: 'permit',
-      args: [
-        session.ephemeralAccount.address,
-        session.identity.address,
-        currentBalance,
-        deadline,
-        Number(v),
-        r,
-        s,
-      ],
-    });
-
-    const transferFromData = encodeFunctionData({
-      abi: USDC_ABI,
-      functionName: 'transferFrom',
-      args: [
-        session.ephemeralAccount.address,
-        session.identity.address,
-        currentBalance,
-      ],
-    });
-
-    await transferSessionBudget(session, [
-      { to: usdcConfig.address, data: permitData },
-      { to: usdcConfig.address, data: transferFromData },
-    ]);
+    await submitReturnTransfer(session, transferCall);
 
     session.fundsTransferred = false;
     session.fundedAmount = 0n;
@@ -880,10 +947,20 @@ export async function getEphemeralWalletClient() {
     globalThis.__GEMINI_PORTO_EPHEMERAL_CLIENT = createWalletClient({
       chain: resolveChain(resolvedSession.chainSetting),
       account: resolvedSession.ephemeralAccount,
-      transport: http(),
+      transport: custom(globalThis.__GEMINI_EPHEMERAL_PORT?.provider!),
     }).extend(publicActions);
   }
   return globalThis.__GEMINI_PORTO_EPHEMERAL_CLIENT!;
+}
+
+export async function getEphemeralAccount() {
+  const session = getSessionState();
+  if (!session) {
+    await connectPortoWallet('base-sepolia');
+  }
+
+  const resolvedSession = assertSessionState();
+  return resolvedSession.ephemeralAccount;
 }
 
 /** Ensure the Porto dialog CLI renderer is active before signing flows.

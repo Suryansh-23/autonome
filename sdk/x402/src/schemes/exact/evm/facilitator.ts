@@ -157,6 +157,12 @@ export async function verify<
   }
   // Verify value in payload is enough to cover paymentRequirements.maxAmountRequired
   if (BigInt(exactEvmPayload.authorization.value) < BigInt(paymentRequirements.maxAmountRequired)) {
+    console.log(
+      "[x402] pValue in payload:",
+      exactEvmPayload.authorization.value,
+      "Required:",
+      paymentRequirements.maxAmountRequired,
+    );
     return {
       isValid: false,
       invalidReason: "invalid_exact_evm_payload_authorization_value", //"Value in payload is not enough to cover paymentRequirements.maxAmountRequired",

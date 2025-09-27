@@ -3,7 +3,8 @@
   "version": "0.6.0",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/esm/index.d.ts",
+  "type": "module",
   "scripts": {
     "start": "tsx --env-file=.env index.ts",
     "build": "NODE_OPTIONS=--max-old-space-size=4096 tsup",
@@ -67,8 +68,8 @@
   "exports": {
     "./shared": {
       "import": {
-        "types": "./dist/esm/shared/index.d.mts",
-        "default": "./dist/esm/shared/index.mjs"
+        "types": "./dist/esm/shared/index.d.ts",
+        "default": "./dist/esm/shared/index.js"
       },
       "require": {
         "types": "./dist/cjs/shared/index.d.ts",
@@ -77,8 +78,8 @@
     },
     "./shared/evm": {
       "import": {
-        "types": "./dist/esm/shared/evm/index.d.mts",
-        "default": "./dist/esm/shared/evm/index.mjs"
+        "types": "./dist/esm/shared/evm/index.d.ts",
+        "default": "./dist/esm/shared/evm/index.js"
       },
       "require": {
         "types": "./dist/cjs/shared/evm/index.d.ts",
@@ -87,8 +88,8 @@
     },
     "./schemes": {
       "import": {
-        "types": "./dist/esm/schemes/index.d.mts",
-        "default": "./dist/esm/schemes/index.mjs"
+        "types": "./dist/esm/schemes/index.d.ts",
+        "default": "./dist/esm/schemes/index.js"
       },
       "require": {
         "types": "./dist/cjs/schemes/index.d.ts",
@@ -97,8 +98,8 @@
     },
     "./client": {
       "import": {
-        "types": "./dist/esm/client/index.d.mts",
-        "default": "./dist/esm/client/index.mjs"
+        "types": "./dist/esm/client/index.d.ts",
+        "default": "./dist/esm/client/index.js"
       },
       "require": {
         "types": "./dist/cjs/client/index.d.ts",
@@ -107,8 +108,8 @@
     },
     "./verify": {
       "import": {
-        "types": "./dist/esm/verify/index.d.mts",
-        "default": "./dist/esm/verify/index.mjs"
+        "types": "./dist/esm/verify/index.d.ts",
+        "default": "./dist/esm/verify/index.js"
       },
       "require": {
         "types": "./dist/cjs/verify/index.d.ts",
@@ -117,8 +118,8 @@
     },
     "./facilitator": {
       "import": {
-        "types": "./dist/esm/facilitator/index.d.mts",
-        "default": "./dist/esm/facilitator/index.mjs"
+        "types": "./dist/esm/facilitator/index.d.ts",
+        "default": "./dist/esm/facilitator/index.js"
       },
       "require": {
         "types": "./dist/cjs/facilitator/index.d.ts",
@@ -127,8 +128,8 @@
     },
     "./types": {
       "import": {
-        "types": "./dist/esm/types/index.d.mts",
-        "default": "./dist/esm/types/index.mjs"
+        "types": "./dist/esm/types/index.d.ts",
+        "default": "./dist/esm/types/index.js"
       },
       "require": {
         "types": "./dist/cjs/types/index.d.ts",
