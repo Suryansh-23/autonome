@@ -20,10 +20,10 @@ app.use((req, res, next) => setHeaderMiddleware(payTo, res, next))
 app.use(middleware(
   payTo,
   {
-    '/*': { price: '$0.01', network: 'arbitrum-sepolia' }
+    '/*': { price: '$0.01', network: 'base-sepolia' }
   },
   { 
-    url: facilitatorURL 
+    url: facilitatorURL
   },
   undefined, 
   undefined
@@ -86,7 +86,7 @@ app.get('/healthz', (req, res) => {
 })
 
 app.listen(3001, () => {
-  console.log('Vercel Express server is running on http://localhost:3001')
+  console.log('HeySuri server is running on http://localhost:3001')
 })
 
 module.exports = app

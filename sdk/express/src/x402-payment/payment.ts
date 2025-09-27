@@ -82,10 +82,10 @@ export function paymentMiddleware(
     const matchingRoute = findMatchingRoute(routePatterns, req.path, req.method.toUpperCase());
 
     if (!matchingRoute) {
-      console.log(`[paymentMiddleware] endpoint called is not a part of the protected routes, allowing through | no x402-payment required`);
+      console.log(`[paymentMiddleware] endpoint called is not a part of the protected routes 🔫🔫🔫🔫🔫`);
       return next();
     }
-    console.log(`[paymentMiddleware] endpoint called is a part of the protected routes, x402-payment required`);
+    console.log(`[paymentMiddleware] endpoint called is a part of the protected routes, x402-payment required 🛡️🛡️🛡️🛡️🛡️`);
     let { price, network, config = {} } = matchingRoute.config;
 
     if (dynamicPriceCalculator) {
@@ -115,7 +115,7 @@ export function paymentMiddleware(
 
     const resourceUrl: Resource =
       resource || (`${req.protocol}://${req.headers.host}${req.path}` as Resource);
-
+    console.log(`[paymentMiddleware] Using resource URL: ${resourceUrl}`);
     let paymentRequirements: PaymentRequirements[] = [];
 
     if (SupportedEVMNetworks.includes(network)) {
@@ -150,7 +150,7 @@ export function paymentMiddleware(
     const isWebBrowser = acceptHeader.includes("text/html") && userAgent.includes("Mozilla");
 
     if (!payment) {
-      console.log(`[paymentMiddleware] x402-payment header missing from request`);
+      console.warn(`[paymentMiddleware] x402-payment header missing from request ⚠️⚠️⚠️⚠️⚠️⚠️⚠️`);
       if (isWebBrowser) {
         let displayAmount: number;
         if (typeof price === "string" || typeof price === "number") {
@@ -219,6 +219,7 @@ export function paymentMiddleware(
     try {
       console.log(`[paymentMiddleware] Verifying payment with facilitator`);
       const response = await verify(decodedPayment, selectedPaymentRequirements);
+      console.log(`[paymentMiddleware] Verify response from facilitator:`, response.isValid);
       if (!response.isValid) {
         res.status(402).json({
           x402Version,
@@ -254,7 +255,7 @@ export function paymentMiddleware(
     };
 
     // Proceed to the next middleware or route handler
-    await next();
+    // await next();
 
     // If the response from the protected route is >= 400, do not settle payment
     if (res.statusCode >= 400) {
@@ -268,8 +269,17 @@ export function paymentMiddleware(
     try {
       console.log(`[paymentMiddleware] Settling payment with facilitator`);
       const settleResponse = await settle(decodedPayment, selectedPaymentRequirements);
+      console.log(`[paymentMiddleware] Settle response from facilitator:`, settleResponse);
       const responseHeader = settleResponseHeader(settleResponse);
-      res.setHeader("X-PAYMENT-RESPONSE", responseHeader);
+      // console.log(`[paymentMiddleware] Setting X-PAYMENT-RESPONSE header:`, responseHeader);
+      
+      if (!res.headersSent) {
+        res.setHeader("X-PAYMENT-RESPONSE", responseHeader);
+        console.log(`[paymentMiddleware] Successfully set X-PAYMENT-RESPONSE header, then calling next()`);
+        await next();
+      } else {
+        console.warn(`[paymentMiddleware] Headers already sent, cannot set X-PAYMENT-RESPONSE header⚠️⚠️⚠️`);
+      }
 
       // if the settle fails, return an error
       if (!settleResponse.success) {

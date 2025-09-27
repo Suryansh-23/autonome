@@ -20,7 +20,7 @@ if (!payTo || !facilitatorURL) {
 app.use(express_1.default.json());
 app.use((req, res, next) => (0, middleware_sdk_1.setHeaderMiddleware)(payTo, res, next));
 app.use((0, middleware_sdk_1.middleware)(payTo, {
-    '/*': { price: '$0.01', network: 'arbitrum-sepolia' }
+    '/*': { price: '$0.01', network: 'base-sepolia' }
 }, {
     url: facilitatorURL
 }, undefined, undefined));
@@ -70,7 +70,7 @@ app.get('/healthz', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 app.listen(3001, () => {
-    console.log('Vercel Express server is running on http://localhost:3001');
+    console.log('HeySuri server is running on http://localhost:3001');
 });
 module.exports = app;
 //# sourceMappingURL=index.js.map

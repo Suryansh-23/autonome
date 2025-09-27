@@ -190,7 +190,6 @@ export async function settle<transport extends Transport, chain extends Chain>(
 
   // re-verify to ensure the payment is still valid
   const valid = await verify(wallet, paymentPayload, paymentRequirements);
-
   if (!valid.isValid) {
     return {
       success: false,
@@ -203,7 +202,6 @@ export async function settle<transport extends Transport, chain extends Chain>(
 
   // Returns the original signature (no-op) if the signature is not a 6492 signature
   const { signature } = parseErc6492Signature(payload.signature as Hex);
-
   const tx = await wallet.writeContract({
     address: paymentRequirements.asset as Address,
     abi,
@@ -219,9 +217,9 @@ export async function settle<transport extends Transport, chain extends Chain>(
     ],
     chain: wallet.chain as Chain,
   });
-
+  console.log("Submitted transferWithAuthorization transaction, hash:", tx);
   const receipt = await wallet.waitForTransactionReceipt({ hash: tx });
-
+  console.log("Transaction receipt:", receipt);
   if (receipt.status !== "success") {
     return {
       success: false,

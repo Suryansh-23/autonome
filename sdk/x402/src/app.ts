@@ -109,6 +109,7 @@ app.post("/settle", async (req: Request, res: Response) => {
     const body: SettleRequest = req.body;
     const paymentRequirements = PaymentRequirementsSchema.parse(body.paymentRequirements);
     const paymentPayload = PaymentPayloadSchema.parse(body.paymentPayload);
+    console.log("Received settle request (facilitator settle endpoint) for network:", paymentRequirements.network);
 
     // use the correct private key based on the requested network
     let signer: Signer;
