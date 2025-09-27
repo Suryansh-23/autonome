@@ -15,7 +15,7 @@ import {
     SupportedPaymentKind } from "x402/types"
 import { verify, settle } from "x402/facilitator"
 import { privateKeyToAccount } from "viem/accounts";
-import { createWalletClient, http, SendTransactionParameters } from "viem";
+import { createWalletClient, Hex, http, SendTransactionParameters } from "viem";
 import { baseSepolia, polygon } from "viem/chains";
 
 const EVM_PRIVATE_KEY = process.env.EVM_PRIVATE_KEY || ""
@@ -121,21 +121,26 @@ app.post("/settle", async (req: Request, res: Response) => {
   }
 });
 
-app.post("paymaster", async (req: Request, res: Response) => {
+app.post("/paymaster", async (req: Request, res: Response) => {
   
   const { to, data, chainId }= req.body
+  const chain = chainIdToChain[chainId as keyof typeof chainIdToChain];
+
   const walletClient = createWalletClient({
-    account: privateKeyToAccount(EVM_PRIVATE_KEY as `0x${string}`),
+    chain,
+    account: privateKeyToAccount(EVM_PRIVATE_KEY as Hex),
     transport: http()
   })
-
+  console.log(`Received paymaster request for chainId: ${chainId}, to: ${to}`);
+  console.log(`created wallet client using private key, account: ${walletClient.account.address}`)
   try {
     const txnPayload: SendTransactionParameters = {
-      account: EVM_ADDRESS as `0x${string}`,
-      to: to as `0x${string}`,
-      data: data as `0x${string}`, 
-      chain: chainIdToChain[chainId as keyof typeof chainIdToChain], 
+      account: EVM_ADDRESS as Hex,
+      to: to as Hex,
+      data: data as Hex, 
+      chain, 
     }
+    // console.log(`txnpayload created this ${txnPayload}`)
     const hash = await walletClient.sendTransaction(txnPayload);
     console.log(`[infra server] transaction sent, hash: ${hash}`);
     res.status(200).json({ hash });
