@@ -1,0 +1,22 @@
+{
+  "name": "sponsoring-express-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsc && node dist/index.js",
+    "start": "NODE_ENV=production tsx src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.1.0",
+    "express": "^5.1.0",
+    "porto": "latest"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "globals": "^16.0.0",
+    "typescript": "~5.9.2"
+  }
+}
