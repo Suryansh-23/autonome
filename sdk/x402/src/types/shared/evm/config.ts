@@ -40,16 +40,11 @@ export const config: Record<string, ChainConfig> = {
     usdcAddress: "0xe15fc38f6d8c56af07bbcbe3baf5708a2bf42392",
     usdcName: "USDC",
   },
-  // arbitrum one pyusd config
-  "42161": {
-    usdcAddress: "0x46850ad61c2b7d64d08c9c754f45254596696984",
-    usdcName: "PYUSD",
-  },
-  // arbitrum sepolia pyusd config
-  "421614": {
-    usdcAddress: "0x637a1259c6afd7e3adf63993ca7e58bb438ab1b1",
-    usdcName: "PYUSD",
-  },
+  // polygon mainnet USDC config
+  "137": {
+    usdcAddress: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+    usdcName: "USDC",
+  }
 };
 
 export type ChainConfig = {
