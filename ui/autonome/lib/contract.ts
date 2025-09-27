@@ -16,6 +16,16 @@ export const ABI = [
     inputs: [{ name: "fullDomain", type: "string" }],
     outputs: [{ name: "available", type: "bool" }],
   },
+  // Event emitted when a domain is successfully registered
+  {
+    type: "event",
+    name: "DomainRegistered",
+    inputs: [
+      { name: "fullDomain", type: "string", indexed: false },
+      { name: "owner", type: "address", indexed: false },
+    ],
+    anonymous: false,
+  },
 ] as const;
 
 export const CONTRACTS: Record<number, { address: Address }> = {

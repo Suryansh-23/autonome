@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
-import { type WalletClient } from "viem";
+import { type WalletClient, type Address, decodeEventLog } from "viem";
 import { readContract, writeContract } from "viem/actions";
 import { ABI, CONTRACTS } from "@/lib/contract";
 import { BackgroundLines } from "@/components/ui/background-lines";
@@ -15,7 +15,9 @@ export default function AppPage() {
   const [txStatus, setTxStatus] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [availability, setAvailability] = useState<"unknown" | "checking" | "available" | "taken">("unknown");
+  const [checkingTimer, setCheckingTimer] = useState<NodeJS.Timeout | null>(null);
 
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
@@ -52,9 +54,36 @@ export default function AppPage() {
     return v;
   };
 
+  // Auto-check availability when user is connected and input looks valid
+  useEffect(() => {
+    if (!isConnected || !publicClient || !contractAddress) return;
+    if (!urlBody || !isValidHttpUrl(fullUrl)) return;
+    // debounce checks to avoid spamming
+    if (checkingTimer) clearTimeout(checkingTimer);
+    const t = setTimeout(async () => {
+      try {
+        setAvailability("checking");
+        const isAvailable = await readContract(publicClient, {
+          address: contractAddress,
+          abi: ABI,
+          functionName: "available",
+          args: [urlBody],
+        });
+        setAvailability(isAvailable ? "available" : "taken");
+      } catch (e) {
+        // keep unknown on failure
+        setAvailability("unknown");
+      }
+    }, 350);
+    setCheckingTimer(t);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlBody, isConnected, publicClient, contractAddress, fullUrl]);
+
   const handleRegister = async () => {
     setError(null);
     setTxHash(null);
+    setSuccess(null);
     try {
       if (!isConnected || !walletClient) {
         setError("Connect a wallet first.");
@@ -99,7 +128,72 @@ export default function AppPage() {
         chain: walletClient.chain,
       });
       setTxHash(hash);
-      setTxStatus("Transaction sent.");
+      setTxStatus("Transaction sent. Waiting for confirmation...");
+
+      // Wait for the tx receipt, then parse logs for our DomainRegistered event
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      const requestedDomain = urlBody; // capture current
+      let matched: { fullDomain?: string; owner?: string } | null = null;
+      for (const log of receipt.logs) {
+        // Only consider logs from our contract
+        if (contractAddress && log.address?.toLowerCase() !== contractAddress.toLowerCase()) continue;
+        try {
+          const decoded = decodeEventLog({
+            abi: ABI as any,
+            data: log.data as any,
+            topics: (log as any).topics,
+            strict: false,
+          }) as any;
+          if (decoded?.eventName === "DomainRegistered") {
+            matched = { fullDomain: decoded.args?.fullDomain, owner: decoded.args?.owner };
+            break;
+          }
+        } catch {
+          // skip non-matching logs
+        }
+      }
+      if (matched && (matched.fullDomain || matched.owner)) {
+        const fullDomain = matched.fullDomain as string | undefined;
+        const evtOwner = matched.owner as string | undefined;
+        if (fullDomain === requestedDomain && (!evtOwner || !address || evtOwner.toLowerCase() === address.toLowerCase())) {
+          setTxStatus(null);
+          setSuccess(`URL successfully registered: https://${fullDomain}`);
+          setAvailability("taken");
+        } else {
+          setTxStatus(null);
+          setError("A DomainRegistered event was found, but it didn't match the requested URL. Please verify on the explorer.");
+        }
+      } else {
+        // No DomainRegistered in this tx. It may be emitted later by automation/oracle.
+        setTxStatus("Transaction confirmed. Waiting for DomainRegistered event...");
+        // Start a temporary watcher to catch the eventual event
+        const unwatch = publicClient.watchContractEvent({
+          address: contractAddress as Address,
+          abi: ABI as any,
+          eventName: "DomainRegistered",
+          onLogs: (logs) => {
+            for (const log of logs) {
+              const fullDomain = (log as any).args?.fullDomain as string | undefined;
+              const evtOwner = (log as any).args?.owner as string | undefined;
+              if (!fullDomain) continue;
+              if (fullDomain === requestedDomain && (!evtOwner || !address || evtOwner.toLowerCase() === address.toLowerCase())) {
+                setTxStatus(null);
+                setSuccess(`URL successfully registered: https://${fullDomain}`);
+                setAvailability("taken");
+                unwatch?.();
+              }
+            }
+          },
+          onError: (err) => {
+            console.warn("watchContractEvent error", err);
+          },
+        });
+        // Stop watching after 5 minutes
+        setTimeout(() => {
+          unwatch?.();
+          setTxStatus((prev) => prev ? "Still waiting for DomainRegistered event... You can also check the explorer." : prev);
+        }, 300_000);
+      }
     } catch (e: any) {
       console.error(e);
       setError(e?.shortMessage || e?.message || "Failed to send transaction");
@@ -126,6 +220,11 @@ export default function AppPage() {
           </CardHeader>
           <CardContent className="p-6 space-y-6">
             <div>
+              {availability === "taken" && (
+                <div className="mb-2 text-sm font-medium text-red-600 dark:text-red-400">
+                  URL cannot be registered.
+                </div>
+              )}
               <label htmlFor="url" className="sr-only">Website URL</label>
               <div className="flex items-center gap-3 rounded-md border-2 border-zinc-400 dark:border-zinc-600 bg-white/90 dark:bg-zinc-800/80 px-4 sm:px-5 py-3 transition focus-within:ring-2 focus-within:ring-zinc-400 dark:focus-within:ring-zinc-500 focus-within:border-zinc-500 dark:focus-within:border-zinc-500">
                 <span className="inline-flex items-center rounded-sm border border-zinc-500/80 dark:border-zinc-500/70 bg-zinc-100/80 dark:bg-zinc-900/70 px-3 py-1.5 text-base font-medium text-zinc-800 dark:text-zinc-200 select-none">
@@ -150,9 +249,15 @@ export default function AppPage() {
             </div>
             <Button
               onClick={handleRegister}
-              disabled={!isConnected || !isValidHttpUrl(fullUrl)}
-              title={!isConnected ? "Connect wallet before registering your site" : undefined}
-              aria-disabled={!isConnected}
+              disabled={!isConnected || !isValidHttpUrl(fullUrl) || availability === "taken" || availability === "checking"}
+              title={!isConnected
+                ? "Connect wallet before registering your site"
+                : availability === "taken"
+                ? "This URL is already registered"
+                : availability === "checking"
+                ? "Checking availability..."
+                : undefined}
+              aria-disabled={!isConnected || availability === "taken" || availability === "checking"}
               className="w-full py-3 rounded-xl"
             >
               Register
@@ -165,6 +270,7 @@ export default function AppPage() {
               </div>
             )}
             {error && <div className="text-center text-red-600 dark:text-red-400">{error}</div>}
+            {success && <div className="text-center text-green-600 dark:text-green-400">{success}</div>}
             {txStatus && <div className="text-center text-green-600 dark:text-green-400">{txStatus}</div>}
             {txHash && (
               <div className="text-center text-sm">
