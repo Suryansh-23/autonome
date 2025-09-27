@@ -26,7 +26,8 @@ app.use(middleware(
     url: facilitatorURL
   },
   undefined, 
-  undefined
+  undefined,
+  undefined,
 ))
 
 // Serve static files from public directory
@@ -78,21 +79,8 @@ app.get("*", (req, res) => {
     .sendFile(path.join(__dirname, "..", "components", "404.html"));
 });
 
-// Example API endpoint - JSON
-app.get("/api-data", (req, res) => {
-  res.json({
-    message: "Here is some sample API data",
-    items: ["apple", "banana", "cherry"],
-  });
-});
-
-// Health check
-app.get("/healthz", (req, res) => {
-  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
-app.listen(3001, () => {
-  console.log('HeySuri server is running on http://localhost:3001')
+app.listen(5001, () => {
+  console.log('HeySuri server is running on http://localhost:5001')
 })
 
 module.exports = app;

@@ -27,20 +27,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Endpoints for Porto Merchant Server
-const porto = Router({ basePath: "/porto" }).route(
-  "/merchant",
-  Route.merchant({
-    address: EVM_ADDRESS as `0x${string}`,
-    key: EVM_PRIVATE_KEY as `0x${string}`,
-    sponsor: true,
-  })
-);
-app.use(porto.listener);
-
-
 // Endpoints for Facilitator Server
-
 type VerifyRequest = {
     paymentPayload: PaymentPayload;
     paymentRequirements: PaymentRequirements;
@@ -127,6 +114,16 @@ app.post("/settle", async (req: Request, res: Response) => {
   }
 });
 
+// Endpoints for Porto Merchant Server
+const porto = Router({ basePath: "/porto" }).route(
+  "/merchant",
+  Route.merchant({
+    address: EVM_ADDRESS as `0x${string}`,
+    key: EVM_PRIVATE_KEY as `0x${string}`,
+    sponsor: true,
+  })
+);
+app.use(porto.listener);
 
 app.listen(process.env.PORT, () => {
   console.log(`Infra server (facilitator + porto merchant) running on port ${process.env.PORT}`);

@@ -1,13 +1,5 @@
 import { Price, Network } from "x402/types";
 
-export interface DynamicPricingConfig {
-    basePrice: Price, 
-    maxPrice: Price, 
-    rpsThreshold: number, 
-    multiplier: number
-}
-
-
 // export interface FacilitatorConfig {}
 
 export interface EIP1559InspiredConfig {
@@ -48,4 +40,46 @@ export interface EIP1559InspiredState {
     baseFeeHistory: number[], 
     requestCounts: Map<number, number>, 
     lastAdjustment: number 
+}
+
+export class MonitoringState {
+    requestCounts: Map<number, number> = new Map()
+    feeCollected: Map<number, number> = new Map()
+
+    constructor() {
+        this.requestCounts = new Map()
+        this.feeCollected = new Map()
+    }
+
+    record(timestamp: number, fee: number) {
+        const currentCount = this.requestCounts.get(timestamp) || 0
+        this.requestCounts.set(timestamp, currentCount + 1)
+
+        const currentFee = this.feeCollected.get(timestamp) || 0
+        this.feeCollected.set(timestamp, currentFee + fee)
+    }
+
+    getRequestAt(timestamp: number): number {
+        return this.requestCounts.get(timestamp) || 0
+    }
+
+    getFeeAt(timestamp: number): number {
+        return this.feeCollected.get(timestamp) || 0
+    }
+
+    getTotalRequests(): number {
+        let total = 0
+        for (const count of this.requestCounts.values()) {
+            total += count
+        }
+        return total
+    }
+
+    getTotalFees(): number {
+        let total = 0
+        for (const fee of this.feeCollected.values()) {
+            total += fee
+        }
+        return total
+    }
 }

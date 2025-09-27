@@ -1,7 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { nextTick } from "process";
 import { Address, getAddress } from "viem";
-// import { Address as SolanaAddress } from "@solana/kit";
 import { exact } from "x402/schemes";
 import {
   computeRoutePatterns,
@@ -26,6 +24,7 @@ import {
   Network
 } from "x402/types";
 import { useFacilitator } from "x402/verify";
+import { MonitoringState } from "../config/config";
 
 /**
  * A function that computes a dynamic price based on the original price and request/network context.
@@ -64,6 +63,7 @@ export type DynamicPriceCalculator = (originalPrice: Price, req: Request, networ
 export function paymentMiddleware(
   payTo: Address,
   routes: RoutesConfig,
+  monitoringState: MonitoringState,
   facilitator?: FacilitatorConfig,
   paywall?: PaywallConfig,
   dynamicPriceCalculator?: DynamicPriceCalculator,
@@ -108,13 +108,17 @@ export function paymentMiddleware(
 
     const atomicAmountForAsset = processPriceToAtomicAmount(price, network);
     console.log(`[paymentMiddleware] Processed price ${price} on network ${network} to atomic amount`, atomicAmountForAsset);
+    // let atomicAmountPrice = atomicAmountForAsset
     if ("error" in atomicAmountForAsset) {
       throw new Error(atomicAmountForAsset.error);
     }
-    const { maxAmountRequired, asset } = atomicAmountForAsset;
-
-    const resourceUrl: Resource =
-      resource || (`${req.protocol}://${req.headers.host}${req.path}` as Resource);
+    let { maxAmountRequired, asset } = atomicAmountForAsset;
+    
+    const randomMultiplier = 1 + (Math.random() * 2 - 1) * 0.02;
+    const randomizedAmount = Math.floor(Number(maxAmountRequired) * randomMultiplier);
+    maxAmountRequired = String(BigInt(randomizedAmount));
+    console.log(`[paymentMiddleware] randomized amount is ${maxAmountRequired}`);
+    const resourceUrl: Resource = resource || (`${req.protocol}://${req.headers.host}${req.path}` as Resource);
     console.log(`[paymentMiddleware] Using resource URL: ${resourceUrl}`);
     let paymentRequirements: PaymentRequirements[] = [];
 
@@ -269,7 +273,8 @@ export function paymentMiddleware(
     try {
       console.log(`[paymentMiddleware] Settling payment with facilitator`);
       const settleResponse = await settle(decodedPayment, selectedPaymentRequirements);
-      console.log(`[paymentMiddleware] Settle response from facilitator:`, settleResponse);
+      console.log(`[paymentMiddleware] Settle response from facilitator:`, settleResponse, 'recording payment and req in the monitoring state');
+      monitoringState.record(Math.floor(Date.now() / 1000), Number(selectedPaymentRequirements.maxAmountRequired));
       const responseHeader = settleResponseHeader(settleResponse);
       // console.log(`[paymentMiddleware] Setting X-PAYMENT-RESPONSE header:`, responseHeader);
       
