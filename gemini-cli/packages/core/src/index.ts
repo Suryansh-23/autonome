@@ -87,6 +87,7 @@ export * from './tools/glob.js';
 export * from './tools/edit.js';
 export * from './tools/write-file.js';
 export * from './tools/web-fetch.js';
+export * from './tools/hypergraph-search.js';
 export * from './tools/memoryTool.js';
 export * from './tools/shell.js';
 export * from './tools/web-search.js';

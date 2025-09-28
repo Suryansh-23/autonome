@@ -27,6 +27,10 @@ import { SmartEditTool } from '../tools/smart-edit.js';
 import { ShellTool } from '../tools/shell.js';
 import { WriteFileTool } from '../tools/write-file.js';
 import { WebFetchTool, type X402PaymentHandler } from '../tools/web-fetch.js';
+import {
+  HypergraphSearchTool,
+  type HypergraphDataProvider,
+} from '../tools/hypergraph-search.js';
 import { ReadManyFilesTool } from '../tools/read-many-files.js';
 import { MemoryTool, setGeminiMdFilename } from '../tools/memoryTool.js';
 import { WebSearchTool } from '../tools/web-search.js';
@@ -228,6 +232,7 @@ export interface ConfigParameters {
   eventEmitter?: EventEmitter;
   useSmartEdit?: boolean;
   x402PaymentHandler?: X402PaymentHandler;
+  hypergraphDataProvider?: HypergraphDataProvider;
 }
 
 export class Config {
@@ -310,6 +315,7 @@ export class Config {
   private readonly eventEmitter?: EventEmitter;
   private readonly useSmartEdit: boolean;
   private readonly x402PaymentHandler: X402PaymentHandler | undefined;
+  private readonly hypergraphDataProvider: HypergraphDataProvider | undefined;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -387,6 +393,7 @@ export class Config {
       params.truncateToolOutputLines ?? DEFAULT_TRUNCATE_TOOL_OUTPUT_LINES;
     this.useSmartEdit = params.useSmartEdit ?? true;
     this.x402PaymentHandler = params.x402PaymentHandler;
+    this.hypergraphDataProvider = params.hypergraphDataProvider;
     this.extensionManagement = params.extensionManagement ?? true;
     this.storage = new Storage(this.targetDir);
     this.enablePromptCompletion = params.enablePromptCompletion ?? false;
@@ -879,6 +886,10 @@ export class Config {
     return this.x402PaymentHandler;
   }
 
+  getHypergraphDataProvider(): HypergraphDataProvider | undefined {
+    return this.hypergraphDataProvider;
+  }
+
   async getGitService(): Promise<GitService> {
     if (!this.gitService) {
       this.gitService = new GitService(this.targetDir, this.storage);
@@ -957,6 +968,11 @@ export class Config {
     }
     registerCoreTool(WriteFileTool, this);
     registerCoreTool(WebFetchTool, this, this.getX402PaymentHandler());
+    registerCoreTool(
+      HypergraphSearchTool,
+      this,
+      this.getHypergraphDataProvider(),
+    );
     registerCoreTool(ReadManyFilesTool, this);
     registerCoreTool(ShellTool, this);
     registerCoreTool(MemoryTool);

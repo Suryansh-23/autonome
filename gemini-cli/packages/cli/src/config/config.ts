@@ -36,6 +36,7 @@ import type { Settings } from './settings.js';
 import type { Extension } from './extension.js';
 import { annotateActiveExtensions } from './extension.js';
 import { createX402PaymentHandler } from '../x402/paymentHandler.js';
+import { createHypergraphDataProvider } from '../hypergraph/dataProvider.js';
 import { getCliVersion } from '../utils/version.js';
 import { loadSandboxConfig } from './sandboxConfig.js';
 import { resolvePath } from '../utils/resolvePath.js';
@@ -635,6 +636,7 @@ export async function loadCliConfig(
     eventEmitter: appEvents,
     useSmartEdit: argv.useSmartEdit ?? settings.useSmartEdit,
     x402PaymentHandler: createX402PaymentHandler(settings),
+    hypergraphDataProvider: createHypergraphDataProvider(),
   });
 }
 
