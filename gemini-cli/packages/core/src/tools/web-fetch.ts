@@ -26,6 +26,7 @@ import { ProxyAgent, setGlobalDispatcher } from 'undici';
 
 const URL_FETCH_TIMEOUT_MS = 10000;
 const MAX_CONTENT_LENGTH = 100000;
+const MAX_X402_RETRY_ATTEMPTS = 3;
 
 // Helper function to extract URLs from a string
 function extractUrls(text: string): string[] {
@@ -55,6 +56,13 @@ interface GroundingSupportItem {
 }
 
 /**
+ * Callback for handling x402 payments when 402 Payment Required is encountered
+ */
+export interface X402PaymentHandler {
+  (url: string, signal?: AbortSignal): Promise<Response>;
+}
+
+/**
  * Parameters for the WebFetch tool
  */
 export interface WebFetchToolParams {
@@ -71,8 +79,68 @@ class WebFetchToolInvocation extends BaseToolInvocation<
   constructor(
     private readonly config: Config,
     params: WebFetchToolParams,
+    private readonly x402PaymentHandler?: X402PaymentHandler,
   ) {
     super(params);
+  }
+
+  /**
+   * Attempts to fetch with x402 payment, retrying up to MAX_X402_RETRY_ATTEMPTS times
+   * if the response continues to return 402 Payment Required.
+   */
+  private async fetchWithX402Retry(
+    url: string,
+    signal: AbortSignal,
+    initialResponse: Response,
+  ): Promise<Response> {
+    let response = initialResponse;
+    let attempt = 0;
+
+    while (
+      response.status === 402 &&
+      attempt < MAX_X402_RETRY_ATTEMPTS &&
+      this.x402PaymentHandler
+    ) {
+      attempt++;
+      console.info(
+        `[x402] web-fetch: 402 Payment Required detected, attempting x402 payment (attempt ${attempt}/${MAX_X402_RETRY_ATTEMPTS})`,
+      );
+
+      try {
+        response = await this.x402PaymentHandler(url, signal);
+        console.info(
+          `[x402] web-fetch: x402 payment attempt ${attempt} completed, status:`,
+          response.status,
+        );
+
+        if (response.status !== 402) {
+          console.info(
+            `[x402] web-fetch: x402 payment successful after ${attempt} attempts`,
+          );
+          break;
+        } else if (attempt < MAX_X402_RETRY_ATTEMPTS) {
+          console.warn(
+            `[x402] web-fetch: Still receiving 402 after payment attempt ${attempt}, retrying in 2 seconds...`,
+          );
+          // Add a small delay to handle rate limiting or temporary payment service issues
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      } catch (paymentError) {
+        console.error(
+          `[x402] web-fetch: x402 payment attempt ${attempt} failed:`,
+          paymentError,
+        );
+        break; // Stop retrying on payment errors
+      }
+    }
+
+    if (response.status === 402 && attempt >= MAX_X402_RETRY_ATTEMPTS) {
+      console.error(
+        `[x402] web-fetch: Failed to complete payment after ${MAX_X402_RETRY_ATTEMPTS} attempts, giving up`,
+      );
+    }
+
+    return response;
   }
 
   private async executeFallback(signal: AbortSignal): Promise<ToolResult> {
@@ -88,7 +156,13 @@ class WebFetchToolInvocation extends BaseToolInvocation<
     }
 
     try {
-      const response = await fetchWithTimeout(url, URL_FETCH_TIMEOUT_MS);
+      let response = await fetchWithTimeout(url, URL_FETCH_TIMEOUT_MS);
+
+      // Check for 402 Payment Required and attempt x402 payment with retry
+      if (response.status === 402 && this.x402PaymentHandler) {
+        response = await this.fetchWithX402Retry(url, signal, response);
+      }
+
       try {
         const header = response.headers.get('x-payment-response');
         if (header) {
@@ -233,11 +307,24 @@ ${textContent}
         const allStatuses = urlContextMeta.urlMetadata.map(
           (m) => m.urlRetrievalStatus,
         );
+        const failedStatuses = urlContextMeta.urlMetadata
+          .filter(
+            (m) => m.urlRetrievalStatus !== 'URL_RETRIEVAL_STATUS_SUCCESS',
+          )
+          .map((m) => m.urlRetrievalStatus);
+
         if (allStatuses.every((s) => s !== 'URL_RETRIEVAL_STATUS_SUCCESS')) {
+          console.warn(
+            '[x402] web-fetch: URL retrieval failed for all URLs, falling back to direct fetch with x402 support. Failed statuses:',
+            failedStatuses,
+          );
           processingError = true;
         }
       } else if (!responseText.trim() && !sources?.length) {
         // No URL metadata and no content/sources
+        console.warn(
+          '[x402] web-fetch: No URL metadata and no content/sources, falling back to direct fetch',
+        );
         processingError = true;
       }
 
@@ -330,7 +417,10 @@ export class WebFetchTool extends BaseDeclarativeTool<
 > {
   static readonly Name: string = 'web_fetch';
 
-  constructor(private readonly config: Config) {
+  constructor(
+    private readonly config: Config,
+    private readonly x402PaymentHandler?: X402PaymentHandler,
+  ) {
     super(
       WebFetchTool.Name,
       'WebFetch',
@@ -372,6 +462,10 @@ export class WebFetchTool extends BaseDeclarativeTool<
   protected createInvocation(
     params: WebFetchToolParams,
   ): ToolInvocation<WebFetchToolParams, ToolResult> {
-    return new WebFetchToolInvocation(this.config, params);
+    return new WebFetchToolInvocation(
+      this.config,
+      params,
+      this.x402PaymentHandler,
+    );
   }
 }

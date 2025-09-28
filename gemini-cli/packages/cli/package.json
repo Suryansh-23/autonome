@@ -58,7 +58,8 @@
     "x402": "file:../../../sdk/x402/",
     "x402-fetch": "file:../../../sdk/x402-fetch/",
     "yargs": "^17.7.2",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@graphprotocol/hypergraph": "^0.7.3"
   },
   "devDependencies": {
     "@babel/runtime": "^7.27.6",

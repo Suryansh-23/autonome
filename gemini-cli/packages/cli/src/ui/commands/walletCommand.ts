@@ -10,6 +10,7 @@ import {
   wrapFetchWithPayment,
   type Signer,
 } from 'x402-fetch';
+import getProjectEntities from '../../hypergraph/index.js';
 import {
   clearStoredWalletIdentity,
   connectPortoWallet,
@@ -20,6 +21,7 @@ import {
   type WalletIdentityRecord,
 } from '../../wallet/porto.js';
 import { CommandKind, type SlashCommand } from './types.js';
+
 export const walletCommand: SlashCommand = {
   name: 'wallet',
   description: 'Manage wallet identity (Porto).',
@@ -289,6 +291,25 @@ export const walletCommand: SlashCommand = {
           messageType: 'info',
           content: `Paid request completed. Status: ${res.status}\nPreview:\n${preview}${paymentInfo}`,
         } as const;
+      },
+    },
+    {
+      name: 'hypergraph',
+      description: 'Test hypergraph',
+      kind: CommandKind.BUILT_IN,
+      async action() {
+        const spaceId = process.env['SPACE_ID']!;
+
+        return {
+          type: 'message',
+          messageType: 'info',
+          content: JSON.stringify(
+            await getProjectEntities({
+              enabled: true,
+              space: spaceId,
+            }),
+          ),
+        };
       },
     },
   ],

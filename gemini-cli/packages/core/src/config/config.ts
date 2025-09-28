@@ -26,7 +26,7 @@ import { EditTool } from '../tools/edit.js';
 import { SmartEditTool } from '../tools/smart-edit.js';
 import { ShellTool } from '../tools/shell.js';
 import { WriteFileTool } from '../tools/write-file.js';
-import { WebFetchTool } from '../tools/web-fetch.js';
+import { WebFetchTool, type X402PaymentHandler } from '../tools/web-fetch.js';
 import { ReadManyFilesTool } from '../tools/read-many-files.js';
 import { MemoryTool, setGeminiMdFilename } from '../tools/memoryTool.js';
 import { WebSearchTool } from '../tools/web-search.js';
@@ -227,6 +227,7 @@ export interface ConfigParameters {
   truncateToolOutputLines?: number;
   eventEmitter?: EventEmitter;
   useSmartEdit?: boolean;
+  x402PaymentHandler?: X402PaymentHandler;
 }
 
 export class Config {
@@ -308,6 +309,7 @@ export class Config {
   private readonly fileExclusions: FileExclusions;
   private readonly eventEmitter?: EventEmitter;
   private readonly useSmartEdit: boolean;
+  private readonly x402PaymentHandler: X402PaymentHandler | undefined;
 
   constructor(params: ConfigParameters) {
     this.sessionId = params.sessionId;
@@ -384,6 +386,7 @@ export class Config {
     this.truncateToolOutputLines =
       params.truncateToolOutputLines ?? DEFAULT_TRUNCATE_TOOL_OUTPUT_LINES;
     this.useSmartEdit = params.useSmartEdit ?? true;
+    this.x402PaymentHandler = params.x402PaymentHandler;
     this.extensionManagement = params.extensionManagement ?? true;
     this.storage = new Storage(this.targetDir);
     this.enablePromptCompletion = params.enablePromptCompletion ?? false;
@@ -872,6 +875,10 @@ export class Config {
     return this.useSmartEdit;
   }
 
+  getX402PaymentHandler(): X402PaymentHandler | undefined {
+    return this.x402PaymentHandler;
+  }
+
   async getGitService(): Promise<GitService> {
     if (!this.gitService) {
       this.gitService = new GitService(this.targetDir, this.storage);
@@ -949,7 +956,7 @@ export class Config {
       registerCoreTool(EditTool, this);
     }
     registerCoreTool(WriteFileTool, this);
-    registerCoreTool(WebFetchTool, this);
+    registerCoreTool(WebFetchTool, this, this.getX402PaymentHandler());
     registerCoreTool(ReadManyFilesTool, this);
     registerCoreTool(ShellTool, this);
     registerCoreTool(MemoryTool);
