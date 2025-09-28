@@ -239,7 +239,7 @@ export async function parseArguments(settings: Settings): Promise<CliArgs> {
           type: 'string',
           description:
             'Override wallet chain (base-sepolia | base). Defaults to settings.wallet.chain.',
-          choices: ['base-sepolia', 'base'] as const,
+          choices: ['base-sepolia', 'polygon'] as const,
         })
         .deprecateOption(
           'telemetry',

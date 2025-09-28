@@ -1181,7 +1181,9 @@ describe('CoreToolScheduler request queueing', () => {
 
     // Wait for all tools to be awaiting approval
     await vi.waitFor(() => {
-      const calls = onToolCallsUpdate.mock.calls.at(-1)?.[0] as ToolCall[];
+      const calls = onToolCallsUpdate.mock.calls[
+        onToolCallsUpdate.mock.calls.length - 1
+      ]?.[0] as ToolCall[];
       expect(calls?.length).toBe(3);
       expect(calls?.every((call) => call.status === 'awaiting_approval')).toBe(
         true,
@@ -1197,9 +1199,9 @@ describe('CoreToolScheduler request queueing', () => {
     // Wait for all tools to be completed
     await vi.waitFor(() => {
       expect(onAllToolCallsComplete).toHaveBeenCalled();
-      const completedCalls = onAllToolCallsComplete.mock.calls.at(
-        -1,
-      )?.[0] as ToolCall[];
+      const completedCalls = onAllToolCallsComplete.mock.calls[
+        onAllToolCallsComplete.mock.calls.length - 1
+      ]?.[0] as ToolCall[];
       expect(completedCalls?.length).toBe(3);
       expect(completedCalls?.every((call) => call.status === 'success')).toBe(
         true,

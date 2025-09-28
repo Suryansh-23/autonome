@@ -5,11 +5,11 @@
  */
 
 import type {
-  MCPServerConfig,
-  BugCommandSettings,
-  TelemetrySettings,
   AuthType,
+  BugCommandSettings,
   ChatCompressionSettings,
+  MCPServerConfig,
+  TelemetrySettings,
 } from '@google/gemini-cli-core';
 import {
   DEFAULT_TRUNCATE_TOOL_OUTPUT_LINES,
@@ -406,13 +406,13 @@ const SETTINGS_SCHEMA = {
         label: 'Wallet Chain',
         category: 'Wallet',
         requiresRestart: false,
-        default: 'base-sepolia',
+        default: 'polygon',
         description:
-          'Blockchain network used for wallet connection (default base-sepolia).',
+          'Blockchain network used for wallet connection (default polygon).',
         showInDialog: true,
         options: [
+          { value: 'polygon', label: 'Polygon (Mainnet)' },
           { value: 'base-sepolia', label: 'Base Sepolia (Testnet)' },
-          { value: 'base', label: 'Base (Mainnet)' },
         ] as const,
       },
       payments: {
@@ -444,8 +444,8 @@ const SETTINGS_SCHEMA = {
               'Chain to use for payments. If unset, falls back to Wallet Chain.',
             showInDialog: true,
             options: [
+              { value: 'polygon', label: 'Polygon (Mainnet)' },
               { value: 'base-sepolia', label: 'Base Sepolia (Testnet)' },
-              { value: 'base', label: 'Base (Mainnet)' },
             ] as const,
           },
           maxUsdBudget: {

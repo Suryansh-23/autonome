@@ -76,7 +76,7 @@ export const walletCommand: SlashCommand = {
 
         try {
           const chain = (context.services.settings.merged.wallet?.chain ||
-            'base-sepolia') as 'base-sepolia' | 'base';
+            'polygon') as 'base-sepolia' | 'polygon';
           const identity: WalletIdentityRecord | null =
             await connectPortoWallet(chain, (url: string) => {
               context.ui.addItem(
@@ -187,13 +187,13 @@ export const walletCommand: SlashCommand = {
         const payCfg = context.services.settings.merged.wallet?.payments as
           | {
               enabled?: boolean;
-              chain?: 'base-sepolia' | 'base';
+              chain?: 'base-sepolia' | 'polygon';
               maxUsdBudget?: number;
             }
           | undefined;
         const chain = (payCfg?.chain ||
           context.services.settings.merged.wallet?.chain ||
-          'base-sepolia') as 'base-sepolia' | 'base';
+          'base-sepolia') as 'base-sepolia' | 'polygon';
         const account = await getEphemeralAccount();
         // Try to log chainId as an extra sanity check
 
@@ -228,10 +228,15 @@ export const walletCommand: SlashCommand = {
           ...(account as unknown as Signer),
           // @ts-ignore
           signTypedData: async (parameters: any): Promise<Hex> => {
-            // console.info('[x402] signTypedData called:', parameters);
+            console.info(
+              '[x402] signTypedData called:',
+              JSON.stringify(parameters, (_, v) =>
+                typeof v === 'bigint' ? v.toString() : v,
+              ),
+            );
             const tmp = await account.signTypedData(parameters);
 
-            // console.info('[x402] signTypedData result:', tmp);
+            console.info('[x402] signTypedData result:', tmp);
             return tmp;
           },
         };

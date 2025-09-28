@@ -454,7 +454,7 @@ describe('ClearcutLogger', () => {
         '1',
       ]);
 
-      expect(events.at(TEST_ONLY.MAX_EVENTS - 1)).toHaveMetadataValue([
+      expect(events[TEST_ONLY.MAX_EVENTS - 1]).toHaveMetadataValue([
         EventMetadataKey.GEMINI_CLI_AI_ADDED_LINES,
         `${TEST_ONLY.MAX_EVENTS}`,
       ]);

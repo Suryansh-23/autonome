@@ -152,7 +152,7 @@ export function appendToLastTextPart(
   }
 
   const newPrompt = [...prompt];
-  const lastPart = newPrompt.at(-1);
+  const lastPart = newPrompt[newPrompt.length - 1];
 
   if (typeof lastPart === 'string') {
     newPrompt[newPrompt.length - 1] = `${lastPart}${separator}${textToAppend}`;

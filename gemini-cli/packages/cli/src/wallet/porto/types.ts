@@ -7,7 +7,7 @@
 import { Account } from 'porto/viem';
 import type { Address, Hex } from 'viem';
 
-export type WalletChainSetting = 'base-sepolia' | 'base';
+export type WalletChainSetting = 'base-sepolia' | 'polygon';
 
 export interface WalletIdentityRecord {
   address: Address;

@@ -255,7 +255,7 @@ export async function maybeAutoConnectWallet(
 
   const chainSetting = (argvWalletChain ||
     settings.merged.wallet?.chain ||
-    'base-sepolia') as WalletChainSetting;
+    'polygon') as WalletChainSetting;
   try {
     const identity = await connectPortoWallet(chainSetting, (url) => {
       console.log(`Opening browser to complete wallet login: ${url}`);
@@ -281,7 +281,7 @@ export async function getWalletClient(chain: WalletChainSetting) {
 export async function getEphemeralWalletClient() {
   const session = getSessionState();
   if (!session) {
-    await connectPortoWallet('base-sepolia');
+    await connectPortoWallet('polygon');
   }
   const resolvedSession = getSessionState();
   if (!resolvedSession) throw new Error('Porto session state unavailable');
@@ -303,7 +303,7 @@ export async function getEphemeralWalletClient() {
 export async function getEphemeralAccount() {
   const session = getSessionState();
   if (!session) {
-    await connectPortoWallet('base-sepolia');
+    await connectPortoWallet('polygon');
   }
   return getSessionState()!.ephemeralAccount;
 }

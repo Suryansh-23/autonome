@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { base, baseSepolia } from 'porto/Chains';
+import { baseSepolia, polygon } from 'porto/Chains';
 import type { Abi, Address } from 'viem';
 
 import type { WalletChainSetting } from './types.js';
@@ -101,13 +101,13 @@ export const USDC_DECIMALS = 1_000_000n;
 
 export const USDC_CONFIGS: Record<number, { address: Address; name: string }> =
   {
+    137: {
+      address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
+      name: 'USD Coin',
+    },
     84532: {
       address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
       name: 'USDC',
-    },
-    8453: {
-      address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-      name: 'USD Coin',
     },
   };
 
@@ -124,8 +124,8 @@ export const TRANSFER_WITH_AUTH_TYPES = {
 
 export function resolveChain(chain: WalletChainSetting) {
   switch (chain) {
-    case 'base':
-      return base;
+    case 'polygon':
+      return polygon;
     case 'base-sepolia':
     default:
       return baseSepolia;

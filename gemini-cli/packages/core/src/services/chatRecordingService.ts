@@ -176,7 +176,7 @@ export class ChatRecordingService {
   private getLastMessage(
     conversation: ConversationRecord,
   ): MessageRecord | undefined {
-    return conversation.messages.at(-1);
+    return conversation.messages[conversation.messages.length - 1];
   }
 
   private newMessage(

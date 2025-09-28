@@ -391,12 +391,12 @@ export async function main() {
   // Wire paid fetch via x402 if enabled in settings
   try {
     const payCfg = settings.merged.wallet?.payments as
-      | { enabled?: boolean; chain?: 'base-sepolia' | 'base' }
+      | { enabled?: boolean; chain?: 'base-sepolia' | 'polygon' }
       | undefined;
     if (payCfg?.enabled) {
       const chain = (payCfg.chain ||
         settings.merged.wallet?.chain ||
-        'base-sepolia') as 'base-sepolia' | 'base';
+        'polygon') as 'base-sepolia' | 'polygon';
       const baseSelector: PaymentRequirementsSelector = (
         reqs: unknown,
         _network?: unknown,
@@ -405,7 +405,7 @@ export async function main() {
         const list = Array.isArray(reqs) ? reqs : [reqs];
         try {
           console.info('[x402] available accepts:', JSON.stringify(list));
-          const preferred = chain === 'base' ? 'base' : 'base-sepolia';
+          const preferred = chain === 'polygon' ? 'polygon' : 'base-sepolia';
           const selected = selectPaymentRequirements(
             list as any,
             preferred,
@@ -488,7 +488,10 @@ export async function main() {
               paymentSucceeded = resp.ok && paymentAmount > 0n;
             }
           } catch (e) {
-            console.warn('[x402] Failed to decode x-payment-response header:', e);
+            console.warn(
+              '[x402] Failed to decode x-payment-response header:',
+              e,
+            );
           }
           if (paymentSucceeded && paymentAmount > 0n && resp.ok) {
             registerSessionSpend(paymentAmount);
