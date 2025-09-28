@@ -80,7 +80,7 @@ export function wrapFetchWithPayment(
       "exact",
     );
     console.info("[x402] 402 Payment Required received:", {
-      requiredValue: selectedPaymentRequirements.maxAmountRequiredp,
+      requiredValue: selectedPaymentRequirements.maxAmountRequired,
     });
 
     if (BigInt(selectedPaymentRequirements.maxAmountRequired) > maxValue) {

@@ -21,7 +21,7 @@ app.use(
   middleware(
     payTo,
     {
-      "/*": { price: "$0.01", network: "base-sepolia" },
+      "/*": { price: "$0.01", network: "polygon" },
     },
     {
       url: facilitatorURL,
